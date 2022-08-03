@@ -37,7 +37,7 @@
           "label": "Connection",
           "name": "connection",
           "widget-attributes": {
-            "connectionType": "ServiceNow"
+            "connectionType": "Salesforce"
           }
         },
         {
@@ -267,7 +267,7 @@
         },
         {
           "type": "property",
-          "name": "user"
+          "name": "username"
         },
         {
           "type": "property",

@@ -8,6 +8,11 @@
       "label": "Credentials",
       "properties": [
         {
+          "widget-type" : "hidden",
+          "label": "OAuth Information",
+          "name": "oAuthInfo"
+        },
+        {
           "widget-type": "textbox",
           "label": "Consumer Key",
           "name": "consumerKey",
@@ -34,7 +39,7 @@
         {
           "widget-type": "textbox",
           "label": "User Name",
-          "name": "user",
+          "name": "username",
           "widget-attributes" : {
             "placeholder": "Salesforce User Name"
           }
