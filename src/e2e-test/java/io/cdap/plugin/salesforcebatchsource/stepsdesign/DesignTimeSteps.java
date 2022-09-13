@@ -16,12 +16,12 @@
 
 package io.cdap.plugin.salesforcebatchsource.stepsdesign;
 
-import io.cdap.e2e.utils.CdfHelper;
+import io.cdap.e2e.pages.actions.CdfPluginPropertiesActions;
 import io.cdap.plugin.salesforcebatchsource.actions.SalesforcePropertiesPageActions;
 import io.cdap.plugin.utils.SchemaTable;
 import io.cdap.plugin.utils.enums.SOQLQueryType;
 import io.cdap.plugin.utils.enums.SObjects;
-import io.cdap.plugin.utils.enums.SalesforceBatchSourceProperty;
+import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -29,8 +29,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 /**
  * Design-time steps of Salesforce plugins.
  */
-public class DesignTimeSteps implements CdfHelper {
-  String invalidSobjectName = "blahblah";
+public class DesignTimeSteps {
 
   @When("fill Reference Name property")
   public void fillReferenceNameProperty() {
@@ -48,29 +47,20 @@ public class DesignTimeSteps implements CdfHelper {
     SalesforcePropertiesPageActions.fillAuthenticationPropertiesForSalesforceAdminUser();
   }
 
+  @When("Click on the Macro button of SOQL Property: {string} and set the value to: {string}")
+  public void fillValueInMacroEnabledSoqlProperty(String property, String value) {
+    CdfPluginPropertiesActions.clickMacroButtonOfProperty(property);
+    SalesforcePropertiesPageActions.fillSOQLPropertyField(value);
+  }
+
   @When("configure Salesforce source for an SOQL Query of type: {string}")
   public void configureSalesforceForSoqlQuery(String queryType) {
     SalesforcePropertiesPageActions.configureSalesforcePluginForSoqlQuery(SOQLQueryType.valueOf(queryType));
   }
 
-  @When("click on the Get Schema button")
-  public void clickOnGetSchemaButton() {
-    SalesforcePropertiesPageActions.clickOnGetSchemaButton();
-  }
-
   @When("configure Salesforce source for an SObject Query of SObject: {string}")
   public void configureSalesforceForSObjectQuery(String sObjectName) {
     SalesforcePropertiesPageActions.configureSalesforcePluginForSObjectQuery(SObjects.valueOf(sObjectName));
-  }
-
-  @When("click on the Validate button")
-  public void clickOnValidateButton() {
-    SalesforcePropertiesPageActions.clickOnValidateButton();
-  }
-
-  @Then("verify No errors found success message")
-  public void verifyNoErrorsFoundSuccessMessage() {
-    SalesforcePropertiesPageActions.verifyNoErrorsFoundSuccessMessage();
   }
 
   @Then("verify the Output Schema table for an SOQL query of type: {string}")
@@ -87,49 +77,23 @@ public class DesignTimeSteps implements CdfHelper {
     SalesforcePropertiesPageActions.verifyOutputSchemaTable(schemaTable);
   }
 
-  @When("close plugin properties page")
-  public void closePluginPropertiesPage() {
-    SalesforcePropertiesPageActions.clickOnClosePropertiesPageButton();
+  @When("fill SOQL Query field with a Query: {string}")
+  public void fillSoqlQueryFieldWithStarQuery(String query) {
+    SalesforcePropertiesPageActions.fillSOQLPropertyField(SOQLQueryType.valueOf(query));
   }
 
-  @Then("verify required fields missing validation message for Reference Name property")
-  public void verifyRequiredFieldsMissingValidationMessageForReferenceName() {
-    SalesforcePropertiesPageActions.verifyRequiredFieldsMissingValidationMessage(
-      SalesforceBatchSourceProperty.REFERENCE_NAME);
+  @When("fill SObject Name property with an SObject Name: {string}")
+  public void fillSObjectNameFieldWithInvalidValue(String sObjectName) {
+    SalesforcePropertiesPageActions.fillSObjectName(sObjectName);
   }
 
-  @Then("verify validation message for blank Authentication properties")
-  public void verifyValidationMessageForBlankAuthenticationProperties() {
-    SalesforcePropertiesPageActions.verifyValidationMessageForBlankAuthenticationProperty();
+  @And("fill 'Last Modified After' property in format yyyy-MM-ddThh:mm:ssZ: {string}")
+  public void fillLastModifiedAfter(String value) {
+    SalesforcePropertiesPageActions.fillLastModifiedAfter(value);
   }
 
-  @Then("verify validation message for invalid Authentication properties")
-  public void verifyValidationMessageForInvalidAuthenticationProperties() {
-    SalesforcePropertiesPageActions.verifyValidationMessageForInvalidAuthenticationProperty();
-  }
-
-  @Then("verify validation message for missing SOQL or SObject Name property")
-  public void verifyValidationMessageForMissingSoqlOrSobjectNameProperty() {
-    SalesforcePropertiesPageActions.verifyValidationMessageForMissingSoqlOrSobjectNameProperty();
-  }
-
-  @When("fill SOQL Query field with a Star Query")
-  public void fillSoqlQueryFieldWithStarQuery() {
-    SalesforcePropertiesPageActions.fillSOQLPropertyField(SOQLQueryType.STAR);
-  }
-
-  @Then("verify validation message for invalid soql query with Star")
-  public void verifyInvalidSoqlQueryErrorMessageForStarQueries() {
-    SalesforcePropertiesPageActions.verifyInvalidSoqlQueryErrorMessageForStarQueries();
-  }
-
-  @When("fill SObject Name property with an invalid value")
-  public void fillSObjectNameFieldWithInvalidValue() {
-    SalesforcePropertiesPageActions.fillSObjectName(invalidSobjectName);
-  }
-
-  @Then("verify validation message for invalid SObject name")
-  public void verifyValidationMessageForInvalidSObjectName() {
-    SalesforcePropertiesPageActions.verifyValidationMessageForInvalidSObjectName(invalidSobjectName);
+  @And("fill 'Last Modified Before' property in format yyyy-MM-ddThh:mm:ssZ: {string}")
+  public void fillLastModifiedBefore(String value) {
+    SalesforcePropertiesPageActions.fillLastModifiedBefore(value);
   }
 }
