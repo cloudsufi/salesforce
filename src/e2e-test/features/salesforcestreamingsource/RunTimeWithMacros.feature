@@ -37,10 +37,17 @@ Feature: Salesforce Streaming Source - Run time Scenarios (macros)
     And Close the Plugin Properties page
     And Select Sink plugin: "BigQueryTable" from the plugins list
     And Navigate to the properties page of plugin: "BigQuery"
-    And Configure BigQuery sink plugin for Dataset and Table
+#    And Configure BigQuery sink plugin for Dataset and Table
+    Then Replace input plugin property: "project" with value: "projectId"
+    Then Enter input plugin property: "datasetProject" with value: "projectId"
+    Then Enter input plugin property: "referenceName" with value: "BQReferenceName"
+    Then Enter input plugin property: "dataset" with value: "dataset"
+    Then Enter input plugin property: "table" with value: "bqTargetTable"
+    Then Click plugin property: "truncateTable"
+    Then Click plugin property: "updateTableSchema"
     Then Validate "BigQuery" plugin properties
     And Close the Plugin Properties page
-    And Connect source as "Salesforce" and sink as "BigQueryTable" to establish connection
+    And Connect plugins: "Salesforce" and "BigQuery" to establish connection
     And Save and Deploy Pipeline
     And Run the Pipeline in Runtime
     And Enter runtime argument value from environment variable "admin.username" for key "Username"
@@ -50,7 +57,7 @@ Feature: Salesforce Streaming Source - Run time Scenarios (macros)
     And Enter runtime argument value from environment variable "admin.consumer.secret" for key "ConsumerSecret"
     And Enter runtime argument value "login.url" for key "LoginUrl"
     And Enter unique Topic name as a Runtime argument value for key: "TopicName"
-    And Enter runtime argument value "sobject.leads" for key "SObjectName"
+    And Enter runtime argument value "sobject.lead" for key "SObjectName"
     And Run the Pipeline in Runtime with runtime arguments
     And Wait till pipeline is in running state
     And Create a new Lead in Salesforce using REST API
@@ -78,10 +85,17 @@ Feature: Salesforce Streaming Source - Run time Scenarios (macros)
     And Close the Plugin Properties page
     And Select Sink plugin: "BigQueryTable" from the plugins list
     And Navigate to the properties page of plugin: "BigQuery"
-    And Configure BigQuery sink plugin for Dataset and Table
+#    And Configure BigQuery sink plugin for Dataset and Table
+    Then Replace input plugin property: "project" with value: "projectId"
+    Then Enter input plugin property: "datasetProject" with value: "projectId"
+    Then Enter input plugin property: "referenceName" with value: "BQReferenceName"
+    Then Enter input plugin property: "dataset" with value: "dataset"
+    Then Enter input plugin property: "table" with value: "bqTargetTable"
+    Then Click plugin property: "truncateTable"
+    Then Click plugin property: "updateTableSchema"
     Then Validate "BigQuery" plugin properties
     And Close the Plugin Properties page
-    And Connect source as "Salesforce" and sink as "BigQueryTable" to establish connection
+    And Connect plugins: "Salesforce" and "BigQuery" to establish connection
     And Save and Deploy Pipeline
     And Run the Pipeline in Runtime
     And Enter runtime argument value from environment variable "admin.username" for key "Username"

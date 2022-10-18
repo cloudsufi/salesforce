@@ -59,6 +59,6 @@ public class DesignTimeSteps {
 
   @And("Fill Max Bytes Per Batch as: {string}")
   public void fillMaxBytesPerBatch(String maxBytesPerBatch) {
-    SalesforcePropertiesPageActions.fillMaxBytes(maxBytesPerBatch);
+    SalesforcePropertiesPageActions.fillMaxBytes(PluginPropertyUtils.pluginProp(maxBytesPerBatch));
   }
 }

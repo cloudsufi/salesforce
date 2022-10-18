@@ -16,7 +16,7 @@
 @SFMultiObjectsBatchSource
 @Smoke
 @Regression
-Feature: Salesforce Multi Objects Batch Source - Run time Scenarios
+Feature: Salesforce Multi Objects Batch Source - Design time Scenarios
 
   @MULTIBATCH-TS-SF-DSGN-01
   Scenario: Verify user should be able to successfully validate the source for valid SObject names in the White List

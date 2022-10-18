@@ -18,16 +18,21 @@
 @Regression
 Feature: Salesforce Sink  - Design time scenarios
 
-  @SINK-TS-SF-DSGN-01
+  @SINK-TS-SF-DSGN-01 @BQ_SOURCE_TEST
   Scenario Outline: Verify user should be able to successfully validate the sink for valid SObjectName
     When Open Datafusion Project to configure pipeline
     And Select plugin: "BigQuery" from the plugins list as: "Source"
     And Navigate to the properties page of plugin: "BigQuery"
-    And fill Reference Name property
+    Then Replace input plugin property: "project" with value: "projectId"
+    Then Enter input plugin property: "datasetProject" with value: "projectId"
+    Then Enter input plugin property: "referenceName" with value: "BQReferenceName"
+    Then Enter input plugin property: "dataset" with value: "dataset"
+    Then Enter input plugin property: "table" with value: "bqSourceTable"
+    Then Click on the Get Schema button
     Then Validate "BigQuery" plugin properties
     And Close the Plugin Properties page
     And Select Sink plugin: "Salesforce" from the plugins list
-    And Connect source as "BigQuery" and sink as "Salesforce" to establish connection
+    Then Connect plugins: "BigQuery" and "Salesforce" to establish connection
     And Navigate to the properties page of plugin: "Salesforce"
     And Select Operation type as: "<OperationType>"
     And fill Authentication properties for Salesforce Admin user

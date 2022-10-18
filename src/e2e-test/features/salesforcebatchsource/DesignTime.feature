@@ -28,6 +28,7 @@ Feature: Salesforce Batch Source - Design time Scenarios
     And configure Salesforce source for an SOQL Query of type: "<QueryType>"
     And Click on the Get Schema button
     Then verify the Output Schema table for an SOQL query of type: "<QueryType>"
+#    Then Capture the generated Output Schema
     Examples:
       | QueryType     |
       | SIMPLE        |
