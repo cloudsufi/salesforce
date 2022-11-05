@@ -22,6 +22,8 @@ import io.cdap.plugin.salesforce.authenticator.AuthenticatorCredentials;
 import io.cdap.plugin.salesforce.plugin.OAuthInfo;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
+import org.cometd.bayeux.Channel;
+import org.cometd.bayeux.client.ClientSessionChannel;
 import org.cometd.client.BayeuxClient;
 import org.cometd.client.transport.ClientTransport;
 import org.cometd.client.transport.LongPollingTransport;
@@ -61,6 +63,7 @@ public class SalesforcePushTopicListener {
 
   private final AuthenticatorCredentials credentials;
   private final String topic;
+  private BayeuxClient bayeuxClient;
 
   private JSONContext.Client jsonContext;
 
@@ -74,14 +77,14 @@ public class SalesforcePushTopicListener {
    * to the queue.
    */
   public void start() {
+    LOG.info("start() method called");
     try {
-      BayeuxClient bayeuxClient = getClient(credentials);
-      waitForHandshake(bayeuxClient, HANDSHAKE_TIMEOUT_MS, HANDSHAKE_CHECK_INTERVAL_MS);
+      LOG.info("start() Starting Bayeux Client which listens to the Salesforce PushTopic");
+      createSFListener();
+      waitForHandshake();
+      LOG.info("start() Client handshake done");
       LOG.debug("Client handshake done");
-      bayeuxClient.getChannel("/topic/" + topic).subscribe((channel, message) -> {
-        messagesQueue.add(jsonContext.getGenerator().generate(message.getDataAsMap()));
-      });
-
+      subscribe();
     } catch (Exception e) {
       throw new RuntimeException("Could not start client", e);
     }
@@ -98,6 +101,7 @@ public class SalesforcePushTopicListener {
    * @throws InterruptedException blocking call is interrupted
    */
   public String getMessage(long timeout, TimeUnit unit) throws InterruptedException {
+    LOG.info("getMessage() method called");
     return messagesQueue.poll(timeout, unit);
   }
 
@@ -129,20 +133,123 @@ public class SalesforcePushTopicListener {
 
     // Now set up the Bayeux client itself
     BayeuxClient client = new BayeuxClient(oAuthInfo.getInstanceURL() + DEFAULT_PUSH_ENDPOINT, transport);
-    client.handshake();
-
+    LOG.info("getClient() Bayeux Client set up done.");
     return client;
   }
 
-  private void waitForHandshake(BayeuxClient client,
-                                long timeoutInMilliseconds, long intervalInMilliseconds) {
+  public void createSFListener() {
+
+    try {
+      bayeuxClient = getClient(credentials);
+    } catch (Exception exception) {
+      LOG.info("Exception while cresting bayeux client ", exception);
+    }
+    bayeuxClient.getChannel(Channel.META_HANDSHAKE).addListener
+      ((ClientSessionChannel.MessageListener) (channel, message) -> {
+
+        LOG.info("[CHANNEL:META_HANDSHAKE]: {}", message);
+
+        boolean success = message.isSuccessful();
+        if (!success) {
+          String error = (String) message.get("error");
+          if (error != null) {
+            LOG.info("Error during HANDSHAKE: {}", error);
+            LOG.info("Exiting...");
+          }
+
+          Exception exception = (Exception) message.get("exception");
+          if (exception != null) {
+            LOG.error("Exception during HANDSHAKE", exception);
+            LOG.info("Exiting...");
+
+          }
+        }
+      });
+
+    bayeuxClient.getChannel(Channel.META_CONNECT).addListener(
+      (ClientSessionChannel.MessageListener) (channel, message) -> {
+
+        LOG.info("[CHANNEL:META_CONNECT]: {}", message);
+
+        boolean success = message.isSuccessful();
+        if (!success) {
+          String error = (String) message.get("error");
+          Map<String, Object> advice = message.getAdvice();
+
+          if (error != null) {
+            LOG.info("Error during CONNECT: {}", error);
+            LOG.info("Advice during CONNECT: {}", advice);
+            LOG.info("Exiting...");
+          }
+          if (advice.get("reconnect").equals("handshake")) {
+            LOG.info("Reconnecting to Salesforce Push Topic");
+            reconnectToTopic();
+          }
+        }
+      });
+
+    bayeuxClient.getChannel(Channel.META_SUBSCRIBE).addListener(
+      (ClientSessionChannel.MessageListener) (channel, message) -> {
+
+        LOG.info("[CHANNEL:META_SUBSCRIBE]: " + message);
+        boolean success = message.isSuccessful();
+        if (!success) {
+          String error = (String) message.get("error");
+          if (error != null) {
+            LOG.info("Error during SUBSCRIBE: " + error);
+            LOG.info("Exiting...");
+          }
+        }
+      });
+
+  }
+
+  public void reconnectToTopic() {
+    disconnectStream();
+    createSFListener();
+    waitForHandshake();
+    LOG.info("start() Client handshake done");
+    subscribe();
+  }
+
+  private void waitForHandshake() {
+    bayeuxClient.handshake();
+
     try {
       Awaitility.await()
-        .atMost(timeoutInMilliseconds, TimeUnit.MILLISECONDS)
-        .pollInterval(intervalInMilliseconds, TimeUnit.MILLISECONDS)
-        .until(() -> client.isHandshook());
+        .atMost(SalesforcePushTopicListener.HANDSHAKE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        .pollInterval(SalesforcePushTopicListener.HANDSHAKE_CHECK_INTERVAL_MS, TimeUnit.MILLISECONDS)
+        .until(() -> bayeuxClient.isHandshook());
     } catch (ConditionTimeoutException e) {
       throw new IllegalStateException("Client could not handshake with Salesforce server", e);
     }
+  }
+  
+  private void subscribe() {
+    bayeuxClient.getChannel("/topic/" + topic).subscribe((channel, message) -> {
+      LOG.info("start() Message has been received");
+      LOG.info("start() Message : {}", message);
+      LOG.info("Adding message to the message queue");
+      messagesQueue.add(jsonContext.getGenerator().generate(message.getDataAsMap()));
+      LOG.info("start() Message added to the message queue");
+    });
+  }
+
+  public void disconnectStream() {
+    LOG.info("[BEFORE UNSUBSCRIBE] SUBSCRIBERS : {}", bayeuxClient.getChannel("/topic/PGTopic2").getSubscribers());
+    bayeuxClient.getChannel("/topic/" + topic).unsubscribe();
+    LOG.info("[AFTER UNSUBSCRIBE] SUBSCRIBERS : {}", bayeuxClient.getChannel("/topic/PGTopic2").getSubscribers());
+    LOG.info("Channel Session : {}", bayeuxClient.getChannel("/topic/PGTopic2").getSession());
+    statsLogs();
+    bayeuxClient.disconnect();
+    statsLogs();
+  }
+
+  public void statsLogs() {
+    LOG.info("Cookies: {}", bayeuxClient.getCookieStore().toString());
+    LOG.info("isDisconnected: {}", bayeuxClient.isDisconnected());
+    LOG.info("isConnected: {}", bayeuxClient.isConnected());
+    LOG.info("isHandshook: {}", bayeuxClient.isHandshook());
+    LOG.info("Get Subscribers: {}", bayeuxClient.getChannel("/topic/PGTopic2").getSubscribers());
   }
 }

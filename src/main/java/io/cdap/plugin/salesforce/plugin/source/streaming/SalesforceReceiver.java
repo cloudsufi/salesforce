@@ -48,7 +48,9 @@ public class SalesforceReceiver extends Receiver<String> {
 
   @Override
   public void onStart() {
+    LOG.info("onStart() method called");
     pushTopicListener = new SalesforcePushTopicListener(this.credentials, this.topic);
+    LOG.info("Starting the Push Topic Listener...");
     pushTopicListener.start();
 
     ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
@@ -60,16 +62,22 @@ public class SalesforceReceiver extends Receiver<String> {
 
   @Override
   public void onStop() {
+    LOG.info("onStop() method called");
     // There is nothing we can do here as the thread calling receive()
     // is designed to stop by itself if isStopped() returns false
   }
 
   private void receive() {
+    LOG.info("receive() method called");
     try {
       while (!isStopped()) {
+        LOG.info("receive() Push Topic Listener gets the message by polling the message queue.");
         String message = pushTopicListener.getMessage(GET_MESSAGE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        LOG.info("receive() Message: {}", message);
         if (message != null) {
+          LOG.info("receive() Storing message...");
           store(message);
+          LOG.info("receive() Message stored successfully");
         }
       }
     } catch (Exception e) {
