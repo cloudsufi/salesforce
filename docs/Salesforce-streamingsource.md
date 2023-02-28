@@ -36,6 +36,10 @@ A Salesforce connected application must be created in order to get a client secr
 
 **Login Url:** Salesforce OAuth2 login url.
 
+**Use Connection:** Whether to use a connection. If a connection is used, you do not need to provide the credentials.
+
+**Connection:** Name of the connection to use.
+
 **Connect Timeout:** Maximum time in milliseconds to wait for connection initialization before time out.
 
 **Topic Name:** Salesforce push topic name. Plugin will track updates from this topic. If the topic does
@@ -56,14 +60,14 @@ This field not required if you are using an existing push topic.
 
 
 **Notify For Fields:** Push topic property, which specifies how the record is evaluated against the
-PushTopic query. The NotifyForFields values are:<br>
+PushTopic query. The NotifyForFields values are:  
 _All_	- Notifications are generated for all record field changes, provided the evaluated records match
-the criteria specified in the WHERE clause.<br>
+the criteria specified in the WHERE clause.  
 _Referenced (default)_ -	Changes to fields referenced in the SELECT and WHERE clauses are evaluated.
 Notifications are generated for the evaluated records only if they match the criteria specified
-in the WHERE clause.<br>
+in the WHERE clause.  
 _Select_	- Changes to fields referenced in the SELECT clause are evaluated. Notifications are generated
-for the evaluated records only if they match the criteria specified in the WHERE clause.<br>
+for the evaluated records only if they match the criteria specified in the WHERE clause.  
 _Where_	- Changes to fields referenced in the WHERE clause are evaluated. Notifications are generated
 for the evaluated records only if they match the criteria specified in the WHERE clause.
 

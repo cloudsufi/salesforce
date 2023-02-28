@@ -30,6 +30,11 @@ A Salesforce connected application must be created in order to get a client secr
 
 **Connect Timeout:** Maximum time in milliseconds to wait for connection initialization before time out.
 
+**Use Connection:** Whether to use a connection. If a connection is used, you do not need to provide the credentials.
+
+**Connection:** Name of the connection to use. Object Names information will be provided by the connection.
+You also can use the macro function ${conn(connection-name)}.
+
 **SObject Name:** Salesforce object name to insert records into.
 
 There are also **sObjects** that are not supported in the Bulk API of Salesforce.
@@ -72,10 +77,10 @@ Below is a non-comprehensive list of **sObjects** that are not currently availab
 - WorkOrderLineItemStatus
 - WorkOrderStatus
 
-**Operation:** Operation used for writing data into Salesforce.<br>
-Insert - adds records.<br>
+**Operation:** Operation used for writing data into Salesforce.  
+Insert - adds records.  
 Upsert - upserts the records. Salesforce will decide if sObjects 
-are the same using external id field.<br>
+are the same using external id field.  
 Update - updates existing records based on Id field.
 
 **Upsert External ID Field:** External id field name. It is used only if operation is upsert.
@@ -87,6 +92,6 @@ This value cannot be greater than 10,000.
 **Max Bytes Per Batch:** Maximum size in bytes of a batch of records when writing to Salesforce.
 This value cannot be greater than 10,000,000.
 
-**Error Handling:** Strategy used to handle erroneous records.<br>
-Skip on error - Ignores erroneous records.<br>
-Stop on error - Fails pipeline due to erroneous record.
+**Error Handling:** Strategy used to handle erroneous records.  
+Skip on error - Ignores erroneous records.  
+Fail on error - Fails pipeline due to erroneous record.

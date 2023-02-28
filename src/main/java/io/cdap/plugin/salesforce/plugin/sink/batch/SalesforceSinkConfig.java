@@ -103,7 +103,7 @@ public class SalesforceSinkConfig extends ReferencePluginConfig {
   @Name(PROPERTY_ERROR_HANDLING)
   @Description("Strategy used to handle erroneous records.\n" +
     "Skip on error - Ignores erroneous records.\n" +
-    "Stop on error - Fails pipeline due to erroneous record.")
+    "Fail on error - Fails pipeline due to erroneous record.")
   @Macro
   private String errorHandling;
 
