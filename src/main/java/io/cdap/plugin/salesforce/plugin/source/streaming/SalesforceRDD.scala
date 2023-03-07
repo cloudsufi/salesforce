@@ -48,11 +48,12 @@ class SalesforceRDD(sc: SparkContext,
 
   @transient private val bayeuxClient: BayeuxClient = getClient(credentials)
 
-  val hs = handshake()
+  val hs = handshakeAndSubscribe()
 
   private val messages = new ArrayList[String]
 
-  def handshake() {
+  def handshakeAndSubscribe() {
+    LOG.info(">>>> In SalesforceRDD handshakeAndSubscribe()")
     bayeuxClient.handshake()
     bayeuxClient.waitFor(1000, BayeuxClient.State.CONNECTED)
     LOG.info(">>>> Bayeux Client IsHandshook? :  {}", bayeuxClient.isHandshook)
@@ -62,6 +63,7 @@ class SalesforceRDD(sc: SparkContext,
   }
 
   override def compute(split: Partition, context: TaskContext): Iterator[String] = {
+    LOG.info(">>>> In SalesforceRDD compute()")
     try {
       scala.collection.JavaConverters.asScalaIterator(messages.iterator())
     } catch {
