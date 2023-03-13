@@ -25,8 +25,8 @@ A Salesforce connected application must be created in order to get a client secr
 
 **Login Url:** Salesforce OAuth2 login url.
 
-* **JSON**: Contents of the service account JSON file.
-
 Path of the connection
 ----------------------
-To browse, get a sample from, or get the specification for this connection.
+To browse, get a sample from, or get the specification for this connection. (Not supported in Streaming source and 
+batch Multi source).  
+/{object} This path indicates a Salesforce object. An object is the only one that can be sampled.
