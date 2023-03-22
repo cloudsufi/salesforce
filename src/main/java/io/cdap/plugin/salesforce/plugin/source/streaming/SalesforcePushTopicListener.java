@@ -24,6 +24,7 @@ import io.cdap.plugin.salesforce.plugin.OAuthInfo;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.cometd.bayeux.Channel;
+import org.cometd.bayeux.Message;
 import org.cometd.bayeux.client.ClientSessionChannel;
 import org.cometd.client.BayeuxClient;
 import org.cometd.client.transport.ClientTransport;
@@ -36,6 +37,8 @@ import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -64,13 +67,36 @@ public class SalesforcePushTopicListener {
 
   private final AuthenticatorCredentials credentials;
   private final String topic;
+  private final long maxRetryTimeInMins;
+  SalesforceReceiver receiver;
   private BayeuxClient bayeuxClient;
-
   private JSONContext.Client jsonContext;
+  private LocalDateTime firstErrorOccurenceTime = null;
 
-  public SalesforcePushTopicListener(AuthenticatorCredentials credentials, String topic) {
-    this.credentials = credentials;
-    this.topic = topic;
+  public SalesforcePushTopicListener(SalesforceReceiver receiver) {
+    this.credentials = receiver.getCredentials();
+    this.topic = receiver.getTopic();
+    this.receiver = receiver;
+    this.maxRetryTimeInMins = getMaxRetryTimeInMins(receiver);
+  }
+
+  /**
+   * This method wil return maxRetryTimeInMins from runtime arguments and
+   * if not provided by user then return default value
+   *
+   * @param receiver
+   * @return maxRetryTimeInMins
+   */
+  private long getMaxRetryTimeInMins(SalesforceReceiver receiver) {
+    String maxRetryTimeInMins = receiver.getArguments().get(SalesforceConstants.PROPERTY_MAX_RETRY_TIME_IN_MINS);
+    if (maxRetryTimeInMins != null) {
+      try {
+        return Long.parseLong(maxRetryTimeInMins);
+      } catch (NumberFormatException nfe) {
+        // do nothing, this method will return default value below.
+      }
+    }
+    return SalesforceConstants.MAX_RETRY_TIME_IN_MINS;
   }
 
   /**
@@ -138,30 +164,17 @@ public class SalesforcePushTopicListener {
     bayeuxClient = getClient(credentials);
     bayeuxClient.getChannel(Channel.META_HANDSHAKE).addListener
       ((ClientSessionChannel.MessageListener) (channel, message) -> {
-
         boolean success = message.isSuccessful();
         if (!success) {
-          String error = (String) message.get("error");
-          if (error != null) {
-            throw new RuntimeException(String.format("Error in meta handshake, errorMessage: %s", error));
-          } else if (message.get("exception") instanceof Exception) {
-            Exception exception = (Exception) message.get("exception");
-            if (exception != null) {
-              throw new RuntimeException(String.format("Exception in meta handshake %s", exception));
-            }
-          } else {
-            throw new RuntimeException(String.format("Error in meta handshake, message: %s", message));
-          }
-
+          stopReceiver(message, Channel.META_HANDSHAKE);
         }
       });
-
     bayeuxClient.getChannel(Channel.META_CONNECT).addListener(
       (ClientSessionChannel.MessageListener) (channel, message) -> {
 
         boolean success = message.isSuccessful();
         if (!success) {
-          LOG.error(String.format("Error in meta connect, message: %s", message));
+          LOG.debug(String.format("Error in meta connect, message: %s", message));
           String error = (String) message.get("error");
           Map<String, Object> advice = message.getAdvice();
 
@@ -173,15 +186,14 @@ public class SalesforcePushTopicListener {
           // https://developer.salesforce.com/docs/atlas.en-us.api_streaming.meta/api_streaming/streaming_error_codes
           // .htm
           if (advice != null && "handshake".equals(advice.get("reconnect"))) {
-            LOG.debug("Reconnecting to Salesforce Push Topic");
+            LOG.info("Reconnecting to Salesforce Push Topic");
             try {
               reconnectToTopic();
             } catch (Exception e) {
-              throw new RuntimeException("Error in reconnecting to salesforce ", e);
+              stopReceiver(message, Channel.META_CONNECT);
             }
           } else {
-            throw new RuntimeException(String.format("Error in meta connect, errorMessage: %s Advice: %s", error,
-                                                     advice));
+            stopReceiver(message, Channel.META_CONNECT);
           }
         }
       });
@@ -191,15 +203,9 @@ public class SalesforcePushTopicListener {
 
         boolean success = message.isSuccessful();
         if (!success) {
-          String error = (String) message.get("error");
-          if (error != null) {
-            throw new RuntimeException(String.format("Error in meta subscribe, errorMessage: %s", error));
-          } else {
-            throw new RuntimeException(String.format("Error in meta subscribe, message: %s", message));
-          }
+          stopReceiver(message, Channel.META_SUBSCRIBE);
         }
       });
-
   }
 
   public void reconnectToTopic() throws Exception {
@@ -209,7 +215,7 @@ public class SalesforcePushTopicListener {
     subscribe();
   }
 
-  private void waitForHandshake() {
+  private void waitForHandshake() throws IOException {
     bayeuxClient.handshake();
 
     try {
@@ -218,20 +224,46 @@ public class SalesforcePushTopicListener {
         .pollInterval(SalesforcePushTopicListener.HANDSHAKE_CHECK_INTERVAL_MS, TimeUnit.MILLISECONDS)
         .until(() -> bayeuxClient.isHandshook());
     } catch (ConditionTimeoutException e) {
-      throw new IllegalStateException("Client could not handshake with Salesforce server", e);
+      throw new IOException("Client could not handshake with Salesforce server", e);
     }
     LOG.debug("Client handshake done");
   }
 
   private void subscribe() {
-    bayeuxClient.getChannel("/topic/" + topic).subscribe((channel, message) -> {
-      LOG.debug("Message : {}", message);
-      messagesQueue.add(jsonContext.getGenerator().generate(message.getDataAsMap()));
-    });
+    bayeuxClient.getChannel("/topic/" + topic).subscribe((channel, message) ->
+                                                           messagesQueue.add(jsonContext.getGenerator()
+                                                                               .generate(message.getDataAsMap())));
   }
 
   public void disconnectStream() {
-    bayeuxClient.getChannel("/topic/" + topic).unsubscribe();
-    bayeuxClient.disconnect();
+    if (bayeuxClient != null) {
+      bayeuxClient.getChannel("/topic/" + topic).unsubscribe();
+      bayeuxClient.disconnect();
+    }
   }
+
+  /**
+   * @param message message information got from the salesforce side
+   * @param channel Channel for which this information is passed
+   */
+  public void stopReceiver(Message message, String channel) {
+    if (firstErrorOccurenceTime == null) {
+      firstErrorOccurenceTime = LocalDateTime.now();
+      LOG.debug("First error request came at : {} with message : {}", firstErrorOccurenceTime, message);
+      return;
+    } else if (!firstErrorOccurenceTime.isBefore(LocalDateTime.now().minusMinutes(maxRetryTimeInMins))) {
+      return;
+    }
+    String error = (String) message.get("error");
+    if (error != null) {
+      receiver.stop("Error in reconnecting to salesforce",
+                    new RuntimeException(String.format("Error in %s, errorMessage:%s Advice: %s", channel,
+                                                       error, message.getAdvice())));
+    } else {
+      receiver.stop("Error in reconnecting to salesforce",
+                    new RuntimeException(String.format("Error in %s, message: %s", channel,
+                                                       message)));
+    }
+  }
+
 }
