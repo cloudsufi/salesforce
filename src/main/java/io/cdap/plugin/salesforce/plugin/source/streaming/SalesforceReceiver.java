@@ -48,13 +48,12 @@ public class SalesforceReceiver extends Receiver<String> {
 
   @Override
   public void onStart() {
-    pushTopicListener = new SalesforcePushTopicListener(this.credentials, this.topic);
+    pushTopicListener = new SalesforcePushTopicListener(this);
     pushTopicListener.start();
 
     ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
       .setNameFormat(RECEIVER_THREAD_NAME + "-%d")
       .build();
-
     Executors.newSingleThreadExecutor(namedThreadFactory).submit(this::receive);
   }
 
@@ -62,6 +61,9 @@ public class SalesforceReceiver extends Receiver<String> {
   public void onStop() {
     // There is nothing we can do here as the thread calling receive()
     // is designed to stop by itself if isStopped() returns false
+    //Shutdown thread pool executor
+    pushTopicListener.disconnectStream();
+
   }
 
   private void receive() {
@@ -76,7 +78,15 @@ public class SalesforceReceiver extends Receiver<String> {
       String errorMessage = "Exception while receiving messages from pushTopic";
       // Since it's top level method of thread, we need to log the exception or it will be unseen
       LOG.error(errorMessage, e);
-      throw new RuntimeException(errorMessage, e);
+      stop(errorMessage, e);
     }
+  }
+
+  public AuthenticatorCredentials getCredentials() {
+    return credentials;
+  }
+
+  public String getTopic() {
+    return topic;
   }
 }

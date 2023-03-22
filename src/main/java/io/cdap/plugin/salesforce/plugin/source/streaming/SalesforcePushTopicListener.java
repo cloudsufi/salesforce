@@ -35,6 +35,7 @@ import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -63,13 +64,15 @@ public class SalesforcePushTopicListener {
 
   private final AuthenticatorCredentials credentials;
   private final String topic;
+  SalesforceReceiver receiver;
   private BayeuxClient bayeuxClient;
-
   private JSONContext.Client jsonContext;
 
-  public SalesforcePushTopicListener(AuthenticatorCredentials credentials, String topic) {
-    this.credentials = credentials;
-    this.topic = topic;
+
+  public SalesforcePushTopicListener(SalesforceReceiver receiver) {
+    this.credentials = receiver.getCredentials();
+    this.topic = receiver.getTopic();
+    this.receiver = receiver;
   }
 
   /**
@@ -134,30 +137,30 @@ public class SalesforcePushTopicListener {
     bayeuxClient = getClient(credentials);
     bayeuxClient.getChannel(Channel.META_HANDSHAKE).addListener
       ((ClientSessionChannel.MessageListener) (channel, message) -> {
-
         boolean success = message.isSuccessful();
         if (!success) {
           String error = (String) message.get("error");
           if (error != null) {
-            throw new RuntimeException(String.format("Error in meta handshake, errorMessage: %s", error));
+            receiver.stop("Error in reconnecting to salesforce",
+                          new RuntimeException(String.format("Error in meta handshake, errorMessage:%s Advice: %s",
+                                                             error, message.getAdvice())));
           } else if (message.get("exception") instanceof Exception) {
             Exception exception = (Exception) message.get("exception");
             if (exception != null) {
-              throw new RuntimeException(String.format("Exception in meta handshake %s", exception));
+              receiver.stop("Exception in meta handshake", exception);
             }
           } else {
-            throw new RuntimeException(String.format("Error in meta handshake, message: %s", message));
+            receiver.stop("Error in reconnecting to salesforce",
+                          new RuntimeException(String.format("Error in meta handshake, message:%s ", message)));
           }
-
         }
       });
-
     bayeuxClient.getChannel(Channel.META_CONNECT).addListener(
       (ClientSessionChannel.MessageListener) (channel, message) -> {
 
         boolean success = message.isSuccessful();
         if (!success) {
-          LOG.error(String.format("Error in meta connect, message: %s", message));
+          LOG.debug(String.format("Error in meta connect, message: %s", message));
           String error = (String) message.get("error");
           Map<String, Object> advice = message.getAdvice();
 
@@ -169,15 +172,15 @@ public class SalesforcePushTopicListener {
           // https://developer.salesforce.com/docs/atlas.en-us.api_streaming.meta/api_streaming/streaming_error_codes
           // .htm
           if (advice != null && "handshake".equals(advice.get("reconnect"))) {
-            LOG.debug("Reconnecting to Salesforce Push Topic");
+            LOG.info("Reconnecting to Salesforce Push Topic");
             try {
               reconnectToTopic();
             } catch (Exception e) {
-              throw new RuntimeException("Error in reconnecting to salesforce ", e);
+              receiver.reportError("Error in reconnecting to salesforce ", e);
             }
           } else {
-            throw new RuntimeException(String.format("Error in meta connect, errorMessage: %s Advice: %s", error,
-                                                     advice));
+            receiver.stop("Error in reconnecting to salesforce",
+                          new RuntimeException(String.format("Error in meta connect, message:%s", message)));
           }
         }
       });
@@ -189,9 +192,13 @@ public class SalesforcePushTopicListener {
         if (!success) {
           String error = (String) message.get("error");
           if (error != null) {
-            throw new RuntimeException(String.format("Error in meta subscribe, errorMessage: %s", error));
+            receiver.stop("Error in reconnecting to salesforce",
+                          new RuntimeException(String.format("Error in meta Subscribe, errorMessage:%s Advice: %s",
+                                                             error, message.getAdvice())));
           } else {
-            throw new RuntimeException(String.format("Error in meta subscribe, message: %s", message));
+            receiver.stop("Error in reconnecting to salesforce",
+                          new RuntimeException(String.format("Error in meta Subscribe, message: %s",
+                                                             message)));
           }
         }
       });
@@ -205,7 +212,7 @@ public class SalesforcePushTopicListener {
     subscribe();
   }
 
-  private void waitForHandshake() {
+  private void waitForHandshake() throws IOException {
     bayeuxClient.handshake();
 
     try {
@@ -214,20 +221,20 @@ public class SalesforcePushTopicListener {
         .pollInterval(SalesforcePushTopicListener.HANDSHAKE_CHECK_INTERVAL_MS, TimeUnit.MILLISECONDS)
         .until(() -> bayeuxClient.isHandshook());
     } catch (ConditionTimeoutException e) {
-      throw new IllegalStateException("Client could not handshake with Salesforce server", e);
+      throw new IOException("Client could not handshake with Salesforce server", e);
     }
     LOG.debug("Client handshake done");
   }
 
   private void subscribe() {
-    bayeuxClient.getChannel("/topic/" + topic).subscribe((channel, message) -> {
-      LOG.debug("Message : {}", message);
-      messagesQueue.add(jsonContext.getGenerator().generate(message.getDataAsMap()));
-    });
+    bayeuxClient.getChannel("/topic/" + topic).subscribe((channel, message) ->
+                                                           messagesQueue.add(jsonContext.getGenerator()
+                                                                               .generate(message.getDataAsMap())));
   }
 
   public void disconnectStream() {
     bayeuxClient.getChannel("/topic/" + topic).unsubscribe();
     bayeuxClient.disconnect();
   }
+
 }
