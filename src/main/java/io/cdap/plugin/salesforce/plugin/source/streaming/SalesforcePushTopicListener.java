@@ -108,6 +108,7 @@ public class SalesforcePushTopicListener {
     // Set up a Jetty HTTP client to use with CometD
     HttpClient httpClient = new HttpClient(sslContextFactory);
     httpClient.setConnectTimeout(CONNECTION_TIMEOUT_MS);
+    Authenticator.setProxy(credentials, httpClient);
     httpClient.start();
 
     // Use the Jackson implementation

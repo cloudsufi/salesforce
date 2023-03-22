@@ -58,8 +58,12 @@ public class SalesforceConnectionUtil {
     if (conf.get(SalesforceConstants.CONFIG_CONNECT_TIMEOUT) != null) {
       connectTimeout = Integer.parseInt(conf.get(SalesforceConstants.CONFIG_CONNECT_TIMEOUT));
     }
+    String proxyUrl = conf.get(SalesforceConstants.CONFIG_PROXY_URL);
+    String proxyUsername = conf.get(SalesforceConstants.CONFIG_PROXY_USERNAME);
+    String proxyPassword = conf.get(SalesforceConstants.CONFIG_PROXY_PASSWORD);
     if (oAuthToken != null && instanceURL != null) {
-      return new AuthenticatorCredentials(new OAuthInfo(oAuthToken, instanceURL), connectTimeout);
+      return new AuthenticatorCredentials(new OAuthInfo(oAuthToken, instanceURL), connectTimeout,
+                                          proxyUrl, proxyUsername, proxyPassword);
     }
 
     return new AuthenticatorCredentials(conf.get(SalesforceConstants.CONFIG_USERNAME),
@@ -67,7 +71,7 @@ public class SalesforceConnectionUtil {
                                         conf.get(SalesforceConstants.CONFIG_CONSUMER_KEY),
                                         conf.get(SalesforceConstants.CONFIG_CONSUMER_SECRET),
                                         conf.get(SalesforceConstants.CONFIG_LOGIN_URL),
-                                        connectTimeout);
+                                        connectTimeout, proxyUrl, proxyUsername, proxyPassword);
   }
 
   /**

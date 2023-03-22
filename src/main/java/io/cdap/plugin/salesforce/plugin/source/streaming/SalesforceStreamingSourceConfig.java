@@ -127,12 +127,16 @@ public class SalesforceStreamingSourceConfig extends ReferencePluginConfig imple
                                          String pushTopicName, String sObjectName,
                                          @Nullable String securityToken,
                                          @Nullable Integer connectTimeout,
-                                         @Nullable OAuthInfo oAuthInfo) {
+                                         @Nullable OAuthInfo oAuthInfo,
+                                         @Nullable String proxyUrl,
+                                         @Nullable String proxyUsername,
+                                         @Nullable String proxyPassword) {
     super(referenceName);
     this.pushTopicName = pushTopicName;
     this.sObjectName = sObjectName;
     this.connection = new SalesforceConnectorConfig(consumerKey, consumerSecret, username, password, loginUrl,
-                                                    securityToken, connectTimeout, oAuthInfo);
+                                                    securityToken, connectTimeout, oAuthInfo,
+                                                    proxyUrl, proxyUsername, proxyPassword);
   }
 
   @Nullable
@@ -197,7 +201,10 @@ public class SalesforceStreamingSourceConfig extends ReferencePluginConfig imple
     try {
       PartnerConnection partnerConnection = new PartnerConnection(
         Authenticator.createConnectorConfig(new AuthenticatorCredentials(oAuthInfo,
-                                                                         this.getConnection().getConnectTimeout())));
+                                                                         this.getConnection().getConnectTimeout(),
+                                                                         this.connection.getProxyUrl(),
+                                                                         this.connection.getProxyUsername(),
+                                                                         this.connection.getProxyPassword())));
 
       SObject pushTopic = fetchPushTopicByName(partnerConnection, pushTopicName);
       String query = getQuery();

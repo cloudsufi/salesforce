@@ -22,8 +22,17 @@ import com.sforce.ws.ConnectorConfig;
 import io.cdap.plugin.salesforce.SalesforceConnectionUtil;
 import io.cdap.plugin.salesforce.SalesforceConstants;
 import io.cdap.plugin.salesforce.plugin.OAuthInfo;
+import org.eclipse.jetty.client.HttpAuthenticationStore;
 import org.eclipse.jetty.client.HttpClient;
+import org.eclipse.jetty.client.HttpProxy;
+import org.eclipse.jetty.client.ProxyConfiguration;
+import org.eclipse.jetty.client.api.Authentication;
+import org.eclipse.jetty.client.api.AuthenticationStore;
+import org.eclipse.jetty.client.util.BasicAuthentication;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
+
+import java.net.URI;
+import java.net.URISyntaxException;
 
 /**
  * Authentication to Salesforce via oauth2
@@ -48,6 +57,17 @@ public class Authenticator {
       String serviceEndPoint = String.format("%s/services/Soap/u/%s", oAuthInfo.getInstanceURL(), apiVersion);
       connectorConfig.setRestEndpoint(restEndpoint);
       connectorConfig.setServiceEndpoint(serviceEndPoint);
+      // set proxy if proxy server details are available
+      if (!Strings.isNullOrEmpty(credentials.getProxyUrl())) {
+        URI proxyUrl = new URI(credentials.getProxyUrl());
+        connectorConfig.setProxy(proxyUrl.getHost(), proxyUrl.getPort());
+        // set proxy credentials if proxy is secured with username and password.
+        if (!Strings.isNullOrEmpty(credentials.getProxyUsername()) &&
+          !Strings.isNullOrEmpty(credentials.getProxyPassword())) {
+          connectorConfig.setProxyUsername(credentials.getProxyUsername());
+          connectorConfig.setProxyPassword(credentials.getProxyPassword());
+        }
+      }
       // This should only be false when doing debugging.
       connectorConfig.setCompression(true);
       // Set this to true to see HTTP requests and responses on stdout
@@ -76,6 +96,7 @@ public class Authenticator {
     SslContextFactory sslContextFactory = new SslContextFactory();
     HttpClient httpClient = new HttpClient(sslContextFactory);
     httpClient.setConnectTimeout(credentials.getConnectTimeout());
+    setProxy(credentials, httpClient);
     try {
       httpClient.start();
       String response = httpClient.POST(credentials.getLoginUrl()).param("grant_type", "password")
@@ -89,12 +110,43 @@ public class Authenticator {
       if (!Strings.isNullOrEmpty(authResponse.getError())) {
         throw new IllegalArgumentException(
           String.format("Cannot authenticate to Salesforce with given credentials. ServerResponse='%s'",
-                  response));
+                        response));
       }
 
       return new OAuthInfo(authResponse.getAccessToken(), authResponse.getInstanceUrl());
     } finally {
       httpClient.stop();
+    }
+  }
+
+  /**
+   * Set a proxy to http client based on user input.
+   *
+   * @param credentials Credentials contain the proxy server details set in config.
+   * @param httpClient  httpClient to be used to call salesforce APIs
+   */
+  public static void setProxy(AuthenticatorCredentials credentials, HttpClient httpClient) {
+    try {
+      if (Strings.isNullOrEmpty(credentials.getProxyUrl())) {
+        return;
+      }
+      URI proxyUrl = new URI(credentials.getProxyUrl());
+      ProxyConfiguration proxyConfig = httpClient.getProxyConfiguration();
+      HttpProxy proxy = new HttpProxy(proxyUrl.getHost(), proxyUrl.getPort());
+      proxyConfig.getProxies().add(proxy);
+      // set auth store to http client if proxy is secured with username and password.
+      if (Strings.isNullOrEmpty(credentials.getProxyUsername()) ||
+        Strings.isNullOrEmpty(credentials.getProxyPassword())) {
+        return;
+      }
+      AuthenticationStore store = new HttpAuthenticationStore();
+      store.addAuthentication(new BasicAuthentication(proxyUrl, Authentication.ANY_REALM,
+                                                      credentials.getProxyUsername(),
+                                                      credentials.getProxyPassword()));
+      httpClient.setAuthenticationStore(store);
+    } catch (URISyntaxException e) {
+      throw new IllegalArgumentException(String.format("Cannot set up proxy server call with given proxy server values."
+                                                         + " Error : %s", e.getMessage()));
     }
   }
 }

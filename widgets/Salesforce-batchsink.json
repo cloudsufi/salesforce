@@ -90,6 +90,35 @@
       ]
     },
     {
+      "label": "HTTP Proxy",
+      "properties": [
+        {
+          "widget-type": "textbox",
+          "label": "Proxy URL",
+          "name": "proxyUrl",
+          "widget-attributes" : {
+            "placeholder": "Proxy Url"
+          }
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Username",
+          "name": "proxyUsername",
+          "widget-attributes" : {
+            "placeholder": "Proxy Username"
+          }
+        },
+        {
+          "widget-type": "password",
+          "label": "Password",
+          "name": "proxyPassword",
+          "widget-attributes" : {
+            "placeholder": "Proxy Password"
+          }
+        }
+      ]
+    },
+    {
       "label": "Advanced",
       "properties": [
         {
@@ -218,6 +247,18 @@
         {
           "type": "property",
           "name": "connectTimeout"
+        },
+        {
+          "type": "property",
+          "name": "proxyUrl"
+        },
+        {
+          "type": "property",
+          "name": "proxyUsername"
+        },
+        {
+          "type": "property",
+          "name": "proxyPassword"
         }
       ]
     },
@@ -230,6 +271,23 @@
         {
           "type": "property",
           "name": "connection"
+        }
+      ]
+    },
+    {
+      "name": "Proxy authentication",
+      "condition": {
+        "property": "proxyUrl",
+        "operator": "exists"
+      },
+      "show": [
+        {
+          "name": "proxyUsername",
+          "type": "property"
+        },
+        {
+          "name": "proxyPassword",
+          "type": "property"
         }
       ]
     }

@@ -34,16 +34,23 @@ public class AuthenticatorCredentials implements Serializable {
   private final String consumerSecret;
   private final String loginUrl;
   private final Integer connectTimeout;
+  private final String proxyUrl;
+  private final String proxyUsername;
+  private final String proxyPassword;
 
-  public AuthenticatorCredentials(OAuthInfo oAuthInfo, Integer connectTimeout) {
-    this(Objects.requireNonNull(oAuthInfo), null, null, null, null, null, connectTimeout);
+  public AuthenticatorCredentials(OAuthInfo oAuthInfo, Integer connectTimeout, String proxyUrl,
+                                  String proxyUsername, String proxyPassword) {
+    this(Objects.requireNonNull(oAuthInfo), null, null, null, null, null, connectTimeout, proxyUrl,
+         proxyUsername, proxyPassword);
   }
 
   public AuthenticatorCredentials(String username, String password,
-                                  String consumerKey, String consumerSecret, String loginUrl, Integer connectTimeout) {
+                                  String consumerKey, String consumerSecret, String loginUrl,
+                                  Integer connectTimeout, String proxyUrl,
+                                  String proxyUsername, String proxyPassword) {
     this(null, Objects.requireNonNull(username), Objects.requireNonNull(password), Objects.requireNonNull(consumerKey),
          Objects.requireNonNull(consumerSecret), Objects.requireNonNull(loginUrl),
-            Objects.requireNonNull(connectTimeout));
+         Objects.requireNonNull(connectTimeout), proxyUrl, proxyUsername, proxyPassword);
   }
 
   private AuthenticatorCredentials(@Nullable OAuthInfo oAuthInfo,
@@ -52,7 +59,10 @@ public class AuthenticatorCredentials implements Serializable {
                                    @Nullable String consumerKey,
                                    @Nullable String consumerSecret,
                                    @Nullable String loginUrl,
-                                   @Nullable Integer connectTimeout) {
+                                   @Nullable Integer connectTimeout,
+                                   @Nullable String proxyUrl,
+                                   @Nullable String proxyUsername,
+                                   @Nullable String proxyPassword) {
     this.oAuthInfo = oAuthInfo;
     this.username = username;
     this.password = password;
@@ -60,6 +70,9 @@ public class AuthenticatorCredentials implements Serializable {
     this.consumerSecret = consumerSecret;
     this.loginUrl = loginUrl;
     this.connectTimeout = connectTimeout;
+    this.proxyUrl = proxyUrl;
+    this.proxyUsername = proxyUsername;
+    this.proxyPassword = proxyPassword;
   }
 
   @Nullable
@@ -95,6 +108,21 @@ public class AuthenticatorCredentials implements Serializable {
   @Nullable
   public Integer getConnectTimeout() {
     return connectTimeout;
+  }
+
+  @Nullable
+  public String getProxyUrl() {
+    return proxyUrl;
+  }
+
+  @Nullable
+  public String getProxyUsername() {
+    return proxyUsername;
+  }
+
+  @Nullable
+  public String getProxyPassword() {
+    return proxyPassword;
   }
 
   @Override
