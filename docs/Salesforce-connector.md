@@ -25,6 +25,8 @@ A Salesforce connected application must be created in order to get a client secr
 
 **Login Url:** Salesforce OAuth2 login url.
 
+**Connect Timeout:** Maximum time in milliseconds to wait for connection initialization before time out.
+
 Path of the connection
 ----------------------
 To browse, get a sample from, or get the specification for this connection. (Not supported in Streaming source and 

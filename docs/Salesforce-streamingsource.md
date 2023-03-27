@@ -19,6 +19,10 @@ The plugin can either create a PushTopic for the user, or use an existing one.
 Configuration
 -------------
 
+**Use Connection:** Whether to use a connection. If a connection is used, you do not need to provide the credentials.
+
+**Connection:** Name of the connection to use.
+
 **Reference Name:** Name used to uniquely identify this source for lineage, annotating metadata, etc.
 
 **Username:** Salesforce username.
@@ -35,10 +39,6 @@ A Salesforce connected application must be created in order to get a consumer ke
 A Salesforce connected application must be created in order to get a client secret.
 
 **Login Url:** Salesforce OAuth2 login url.
-
-**Use Connection:** Whether to use a connection. If a connection is used, you do not need to provide the credentials.
-
-**Connection:** Name of the connection to use.
 
 **Connect Timeout:** Maximum time in milliseconds to wait for connection initialization before time out.
 

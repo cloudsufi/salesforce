@@ -11,6 +11,11 @@ Currently, only inserts are supported. Upserts are not supported.
 Configuration
 -------------
 
+**Use Connection:** Whether to use a connection. If a connection is used, you do not need to provide the credentials.
+
+**Connection:** Name of the connection to use. Object Names information will be provided by the connection.
+You also can use the macro function ${conn(connection-name)}.  
+
 **Reference Name:** Name used to uniquely identify this sink for lineage, annotating metadata, etc.
 
 **Username:** Salesforce username.
@@ -29,11 +34,6 @@ A Salesforce connected application must be created in order to get a client secr
 **Login Url:** Salesforce OAuth2 login url.
 
 **Connect Timeout:** Maximum time in milliseconds to wait for connection initialization before time out.
-
-**Use Connection:** Whether to use a connection. If a connection is used, you do not need to provide the credentials.
-
-**Connection:** Name of the connection to use. Object Names information will be provided by the connection.
-You also can use the macro function ${conn(connection-name)}.
 
 **SObject Name:** Salesforce object name to insert records into.
 
