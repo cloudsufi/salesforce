@@ -64,6 +64,7 @@ public class Authenticator {
         // set proxy credentials if proxy is secured with username and password.
         if (!Strings.isNullOrEmpty(credentials.getProxyUsername()) &&
           !Strings.isNullOrEmpty(credentials.getProxyPassword())) {
+          connectorConfig.setTransport(HttpClientTransport.class);
           connectorConfig.setProxyUsername(credentials.getProxyUsername());
           connectorConfig.setProxyPassword(credentials.getProxyPassword());
         }
