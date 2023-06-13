@@ -50,7 +50,7 @@ public class DesignTimeSteps {
     lead.put("LastName", "LLname_" + uniqueId);
     lead.put("Company", uniqueId + ".com");
 
-    SalesforceClient.createLead(lead, "Lead");
+    SalesforceClient.createObject(lead, "Lead");
   }
 
   @Then("Enter unique Topic name as a Runtime argument value for key: {string}")

@@ -27,7 +27,7 @@ Feature: Salesforce Batch Source - Run time Scenarios
     And Navigate to the properties page of plugin: "Salesforce"
     And fill Authentication properties for Salesforce Admin user
     And Enter input plugin property: "referenceName" with value: "Reference"
-    And Enter input plugin property: "sObjectName" with value: "sobject.lead"
+    And Enter input plugin property: "sObjectName" with value: "automation"
     Then Validate "Salesforce" plugin properties
     And Capture the generated Output Schema
     And Close the Plugin Properties page
@@ -126,3 +126,42 @@ Feature: Salesforce Batch Source - Run time Scenarios
     And Open and capture logs
     And Verify the pipeline status is "Succeeded"
     Then Close the pipeline logs
+
+  @BATCH-TS-SF-RNTM-04 @BQ_SINK_TEST @BQ_TEMP_CLEANUP @CREATE_CUSTOM @DELETE_OBJECT
+  Scenario: To verify data is getting transferred from Salesforce source to BigQuery sink successfully
+    When Open Datafusion Project to configure pipeline
+    And Select data pipeline type as: "Batch"
+    And Select plugin: "Salesforce" from the plugins list as: "Source"
+    And Navigate to the properties page of plugin: "Salesforce"
+    And fill Authentication properties for Salesforce Admin user
+    And Enter input plugin property: "referenceName" with value: "Reference"
+    And Enter input plugin property: "sObjectName" with value: "automation"
+    Then Validate "Salesforce" plugin properties
+    And Capture the generated Output Schema
+    And Close the Plugin Properties page
+    And Select Sink plugin: "BigQueryTable" from the plugins list
+    And Navigate to the properties page of plugin: "BigQuery"
+    Then Replace input plugin property: "project" with value: "projectId"
+    Then Enter input plugin property: "datasetProject" with value: "projectId"
+    Then Select radio button plugin property: "serviceAccountType" with value: "JSON"
+    Then Read Credentials file "serviceAccountJSON" with value: "keys"
+    Then Enter input plugin property: "referenceName" with value: "BQReferenceName"
+    Then Enter input plugin property: "dataset" with value: "dataset"
+    Then Enter input plugin property: "table" with value: "bqTargetTable"
+    Then Validate "BigQuery" plugin properties
+    Then Close the Plugin Properties page
+    Then Connect plugins: "Salesforce" and "BigQuery" to establish connection
+    Then Save the pipeline
+    Then Preview and run the pipeline
+    Then Wait till pipeline preview is in running state
+    Then Open and capture pipeline preview logs
+    Then Verify the preview run status of pipeline in the logs is "succeeded"
+    Then Close the pipeline logs
+    Then Close the preview
+    Then Deploy the pipeline
+    Then Run the Pipeline in Runtime
+    Then Wait till pipeline is in running state
+    Then Open and capture logs
+    Then Verify the pipeline status is "Succeeded"
+    Then Close the pipeline logs
+    Then Validate the values of records transferred to target Big Query table is equal to the values from source table

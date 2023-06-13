@@ -127,3 +127,41 @@ Feature: Salesforce Sink - Run time Scenarios
     Then Open and capture logs
     Then Verify the pipeline status is "Succeeded"
     Then Close the pipeline logs
+
+  @SINK-TS-SF-RNTM-05 @BQ_SOURCE_TEST @DELETE_OBJECT
+  Scenario: To verify data is getting transferred from Big Query source to Salesforce sink successfully
+    When Open Datafusion Project to configure pipeline
+    And Select plugin: "BigQuery" from the plugins list as: "Source"
+    And Navigate to the properties page of plugin: "BigQuery"
+    Then Replace input plugin property: "project" with value: "projectId"
+    Then Enter input plugin property: "datasetProject" with value: "projectId"
+    Then Select radio button plugin property: "serviceAccountType" with value: "JSON"
+    Then Read Credentials file "serviceAccountJSON" with value: "keys"
+    Then Enter input plugin property: "referenceName" with value: "BQReferenceName"
+    Then Enter input plugin property: "dataset" with value: "dataset"
+    Then Enter input plugin property: "table" with value: "bqSourceTable"
+    Then Validate "BigQuery" plugin properties
+    And Close the Plugin Properties page
+    And Select Sink plugin: "Salesforce" from the plugins list
+    And Connect plugins: "BigQuery" and "Salesforce" to establish connection
+    And Navigate to the properties page of plugin: "Salesforce"
+    And fill Authentication properties for Salesforce Admin user
+    Then Enter input plugin property: "referenceName" with value: "ReferenceName"
+    And Select radio button plugin property: "operation" with value: "insert"
+    And Enter input plugin property: "sObject" with value: "automation"
+    Then Validate "Salesforce" plugin properties
+    And Close the Plugin Properties page
+    And Save the pipeline
+    And Preview and run the pipeline
+    Then Wait till pipeline preview is in running state
+    Then Open and capture pipeline preview logs
+    Then Verify the preview run status of pipeline in the logs is "succeeded"
+    Then Close the pipeline logs
+    Then Close the preview
+    Then Deploy the pipeline
+    Then Run the Pipeline in Runtime
+    Then Wait till pipeline is in running state
+    Then Open and capture logs
+    Then Verify the pipeline status is "Succeeded"
+    Then Close the pipeline logs
+    Then Validate the values of records transferred to target Salesforce is equal to the values from source BigQuery table

@@ -16,13 +16,25 @@
 
 package io.cdap.plugin.salesforcebatchsource.stepsdesign;
 
+import io.cdap.e2e.pages.actions.CdfPipelineRunAction;
 import io.cdap.e2e.pages.actions.CdfPluginPropertiesActions;
+import io.cdap.e2e.utils.BigQueryClient;
+import io.cdap.e2e.utils.PluginPropertyUtils;
+import io.cdap.plugin.BQValidation;
 import io.cdap.plugin.salesforcebatchsource.actions.SalesforcePropertiesPageActions;
 import io.cdap.plugin.utils.enums.SOQLQueryType;
 import io.cdap.plugin.utils.enums.SObjects;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.Assert;
+import stepsdesign.BeforeActions;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.text.ParseException;
 
 /**
  * Design-time steps of Salesforce plugins.
@@ -74,6 +86,36 @@ public class DesignTimeSteps {
   @Then("Use new connection")
   public void clickOnNewServiceNowConnection() {
     SalesforcePropertiesPageActions.clickOnServicenowConnection();
+  }
+
+  @Then("Validate the values of records transferred to target Big Query table is equal to the values from source table")
+  public void validateTheValuesOfRecordsTransferredToTargetBigQueryTableIsEqualToTheValuesFromSourceTable()
+    throws IOException, InterruptedException, IOException, SQLException, ClassNotFoundException, ParseException {
+    int targetBQRecordsCount = BigQueryClient.countBqQuery(PluginPropertyUtils.pluginProp("bqTargetTable"));
+    BeforeActions.scenario.write("No of Records Transferred to BigQuery:" + targetBQRecordsCount);
+    Assert.assertEquals("Out records should match with target BigQuery table records count",
+                        CdfPipelineRunAction.getCountDisplayedOnSourcePluginAsRecordsOut(), targetBQRecordsCount);
+
+    boolean recordsMatched= BQValidation.validateSalesforceToBQRecordValues
+      (PluginPropertyUtils.pluginProp("automation"),
+       PluginPropertyUtils.pluginProp("bqTargetTable"));
+    Assert.assertTrue("Value of records transferred to the target table should be equal to the value " +
+                        "of the records in the source table", recordsMatched);
+  }
+  @Then("Read Credentials file {string} with value: {string}")
+  public void readCredentialsFileWithValue(String pluginProperty, String keys) throws IOException {
+    FileReader file = new FileReader("/home/ankityadav/Downloads/Databases/salesforce/src/e2e-test/resources/credentials");
+    BufferedReader reader = new BufferedReader(file);
+    String key = "";
+    String line = reader.readLine();
+
+    while (line != null) {
+      key += line;
+      line = reader.readLine();
+    }
+
+    CdfPluginPropertiesActions.enterValueInInputProperty(pluginProperty, key);
+
   }
 
 }

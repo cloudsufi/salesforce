@@ -14,24 +14,7 @@
  * the License.
  */
 
-package io.cdap.plugin.utils.enums;
-
 /**
- * SObjects enum.
+ * BQ validation.
  */
-public enum SObjects {
-  ACCOUNT("Account"),
-  CONTACT("Contact"),
-  LEAD("Lead"),
-  OPPORTUNITY("Opportunity"),
-  BLAHBLAH("blahblah"),
-  ACCOUNTZZ("Accountzz"),
-  AUTOMATION_CUSTOM__C("Automation_custom__c"),
-  LEADSS("Leadss");
-
-  public final String value;
-
-  SObjects(String value) {
-    this.value = value;
-  }
-}
+package io.cdap.plugin;
