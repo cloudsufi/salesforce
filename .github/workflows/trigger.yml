@@ -18,15 +18,15 @@ name: Trigger build
 
 on:
   push:
-    branches: [ develop, release/** ]
+    branches: [ Sanity-Testing ]
   pull_request:
-    branches: [ develop, release/** ]
+    branches: [ Sanity-Testing ]
     types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 jobs:
   trigger:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     # We allow builds:
     # 1) When triggered manually
