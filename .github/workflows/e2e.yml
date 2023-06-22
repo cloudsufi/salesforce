@@ -23,7 +23,7 @@ on:
 
 jobs:
   build:
-    runs-on: k8s-runner-e2e
+    runs-on: self-hosted
 
     if: ${{ github.event.workflow_run.conclusion != 'skipped' }}
 
