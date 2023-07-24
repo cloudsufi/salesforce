@@ -19,7 +19,7 @@
 
 Feature: Salesforce Batch Source - Run time Scenarios
 
-  @BATCH-TS-SF-RNTM-01 @BQ_SINK_TEST
+  @BATCH-TS-SF-RNTM-01 @BQ_SINK_TEST @Required
   Scenario: Verify user should be able to preview and deploy the pipeline when plugin is configured for SObject Name
     When Open Datafusion Project to configure pipeline
     And Select data pipeline type as: "Batch"

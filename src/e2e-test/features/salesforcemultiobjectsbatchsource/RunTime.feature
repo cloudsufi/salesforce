@@ -19,7 +19,7 @@
 
 Feature: Salesforce Multi Objects Batch Source - Run time Scenarios
 
-  @MULTIBATCH-TS-SF-RNTM-01 @BQ_SINK_TEST
+  @MULTIBATCH-TS-SF-RNTM-01 @BQ_SINK_TEST @Required
   Scenario: Verify user should be able to preview, deploy and run pipeline for valid White List
     When Open Datafusion Project to configure pipeline
     And Select data pipeline type as: "Batch"

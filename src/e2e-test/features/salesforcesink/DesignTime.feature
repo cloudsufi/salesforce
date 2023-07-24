@@ -19,7 +19,7 @@
 
 Feature: Salesforce Sink  - Design time scenarios
 
-  @SINK-TS-SF-DSGN-01 @BQ_SOURCE_TEST
+  @SINK-TS-SF-DSGN-01 @BQ_SOURCE_TEST @Required
   Scenario: Verify user should be able to successfully validate the sink for valid SObjectName
     When Open Datafusion Project to configure pipeline
     And Select plugin: "BigQuery" from the plugins list as: "Source"

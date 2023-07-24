@@ -19,7 +19,7 @@
 
 Feature: Salesforce Batch Source - Design time Scenarios
 
-  @BATCH-TS-SF-DSGN-01
+  @BATCH-TS-SF-DSGN-01 @Required
   Scenario Outline: Verify user should be able to get output schema for a valid SOQL query
     When Open Datafusion Project to configure pipeline
     And Select data pipeline type as: "Batch"
