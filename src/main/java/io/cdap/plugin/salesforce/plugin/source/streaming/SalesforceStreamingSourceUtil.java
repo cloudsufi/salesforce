@@ -79,9 +79,9 @@ public final class SalesforceStreamingSourceUtil {
     final Schema finalSchema = schema;
 
     /************************************* Receiver based ***************************************/
-
-    /*InputDStream inputDStream = jssc.receiverStream(new SalesforceReceiver(config.getConnection()
-      .getAuthenticatorCredentials(), config.getPushTopicName(), getState(streamingContext, config))).inputDStream();*/
+    
+    InputDStream inputDStream = jssc.receiverStream(new SalesforceReceiver(config.getConnection()
+      .getAuthenticatorCredentials(), config.getPushTopicName(), getState(streamingContext, config))).inputDStream();
 
     /************************************* Direct Streaming based ***************************************/
 
@@ -200,6 +200,7 @@ public final class SalesforceStreamingSourceUtil {
         throw new IllegalStateException(String.format("Already subscribed to %s",
                                                       config.getPushTopicName()));
       }
+      LOG.info("Replay Map: {} ", replay);
       return replay;
     }
   }

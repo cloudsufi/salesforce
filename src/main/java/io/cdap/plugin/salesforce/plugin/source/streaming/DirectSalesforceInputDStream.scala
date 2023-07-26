@@ -22,6 +22,8 @@ import io.cdap.plugin.salesforce.plugin.OAuthInfo
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.dstream.InputDStream
 import org.apache.spark.streaming.{StreamingContext, Time}
+import org.cometd.bayeux.Message
+import org.cometd.bayeux.client.ClientSessionChannel
 import org.cometd.client.BayeuxClient
 import org.cometd.client.transport.{ClientTransport, LongPollingTransport}
 import org.cometd.common.JacksonJSONContextClient
@@ -30,6 +32,7 @@ import org.eclipse.jetty.client.api.Request
 import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.slf4j.LoggerFactory
 
+import java.net.InetAddress
 import java.util
 import java.util.concurrent.{ConcurrentMap, LinkedBlockingQueue}
 /**
@@ -52,12 +55,15 @@ class DirectSalesforceInputDStream(_ssc: StreamingContext,
 
   override def start(): Unit = {
     try {
+      LOG.info(">>>> start() Hostname : {}", InetAddress.getLocalHost.getHostName)
       bayeuxClient = getClient(credentials)
       bayeuxClient.handshake()
       bayeuxClient.waitFor(1000, BayeuxClient.State.CONNECTED)
       LOG.info(">>>> Bayeux Client IsHandshook? :  {}", bayeuxClient.isHandshook)
       LOG.info(">>>> Bayeux Client IsConnected? : {}", bayeuxClient.isConnected)
       LOG.info(">>>> Bayeux Client IsDisconnected? : {}", bayeuxClient.isDisconnected)
+      LOG.info(">>>> Bayeux Client ID? : {}", bayeuxClient.getId)
+      LOG.info(">>>> Data Map before registering with ReplayExtension: {}", dataMap);
       // Register Replay Extension with Bayeux Client
       bayeuxClient.addExtension(new ReplayExtension(dataMap))
       subscribe()
@@ -70,10 +76,13 @@ class DirectSalesforceInputDStream(_ssc: StreamingContext,
   override def stop(): Unit = {
     // Stop the Salesforce Streaming connector
     // ...
-    //bayeuxClient.disconnect()
+    bayeuxClient.getChannel("/topic/" + config.getPushTopicName).unsubscribe()
+    bayeuxClient.disconnect()
+
   }
 
   override def compute(validTime: Time): Option[RDD[String]] = {
+    LOG.info(">>>> compute() Hostname : {}", InetAddress.getLocalHost.getHostName)
     LOG.info(">>>> In DirectSalesforceInputDStream compute()")
     // Get the streaming data for the given time
 
@@ -139,6 +148,7 @@ class DirectSalesforceInputDStream(_ssc: StreamingContext,
   }
 
   def subscribe() {
+    LOG.info(">>>> subscribe() Hostname : {}", InetAddress.getLocalHost.getHostName)
     bayeuxClient.getChannel("/topic/" + config.getPushTopicName).subscribe((channel, message) => {
       //def foo(channel: ClientSessionChannel, message: Message) = {
       LOG.info("Message in InputDStream : {}", message)
