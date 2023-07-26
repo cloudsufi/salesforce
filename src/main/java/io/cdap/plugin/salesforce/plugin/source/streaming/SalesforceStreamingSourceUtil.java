@@ -80,8 +80,8 @@ public final class SalesforceStreamingSourceUtil {
 
     /************************************* Receiver based ***************************************/
     
-    InputDStream inputDStream = jssc.receiverStream(new SalesforceReceiver(config.getConnection()
-      .getAuthenticatorCredentials(), config.getPushTopicName(), getState(streamingContext, config))).inputDStream();
+    /*InputDStream inputDStream = jssc.receiverStream(new SalesforceReceiver(config.getConnection()
+      .getAuthenticatorCredentials(), config.getPushTopicName(), getState(streamingContext, config))).inputDStream();*/
 
     /************************************* Direct Streaming based ***************************************/
 
