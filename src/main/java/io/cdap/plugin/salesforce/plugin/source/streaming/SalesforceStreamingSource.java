@@ -35,6 +35,7 @@ import io.cdap.cdap.etl.api.connector.Connector;
 import io.cdap.cdap.etl.api.streaming.StreamingContext;
 import io.cdap.cdap.etl.api.streaming.StreamingSource;
 import io.cdap.cdap.etl.api.streaming.StreamingSourceContext;
+import io.cdap.cdap.etl.api.streaming.StreamingStateHandler;
 import io.cdap.plugin.common.Constants;
 import io.cdap.plugin.common.IdUtils;
 import io.cdap.plugin.common.LineageRecorder;
@@ -62,7 +63,7 @@ import javax.ws.rs.Path;
 @Name(SalesforceStreamingSource.NAME)
 @Description(SalesforceStreamingSource.DESCRIPTION)
 @Metadata(properties = {@MetadataProperty(key = Connector.PLUGIN_TYPE, value = SalesforceConstants.PLUGIN_NAME)})
-public class SalesforceStreamingSource extends StreamingSource<StructuredRecord> {
+public class SalesforceStreamingSource extends StreamingSource<StructuredRecord> implements StreamingStateHandler {
   static final String NAME = "Salesforce";
   static final String DESCRIPTION = "Streams data updates from Salesforce using Salesforce Streaming API";
   private static final Logger LOG = LoggerFactory.getLogger(SalesforceStreamingSource.class);

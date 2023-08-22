@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Google Inc. All Rights Reserved.
+ * Copyright © 2023 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,87 +13,35 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package io.cdap.plugin.salesforce.plugin.source.streaming;
 
-import com.sforce.ws.ConnectionException;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.format.UnexpectedFormatException;
 import io.cdap.cdap.api.data.schema.Schema;
-import io.cdap.cdap.etl.api.streaming.StreamingContext;
-import io.cdap.plugin.salesforce.SObjectDescriptor;
-import io.cdap.plugin.salesforce.SalesforceSchemaUtil;
-import io.cdap.plugin.salesforce.plugin.OAuthInfo;
-import org.apache.spark.streaming.api.java.JavaDStream;
-import org.apache.spark.streaming.api.java.JavaReceiverInputDStream;
-import org.apache.spark.streaming.api.java.JavaStreamingContext;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import scala.reflect.ClassTag;
-import scala.reflect.ClassTag$;
 
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Salesforce streaming source uti.
+ * PubSubStructuredRecordConverter for converting a PubSubMessage to StructuredRecord.
  */
-final class SalesforceStreamingSourceUtil {
-  private static final Logger LOG = LoggerFactory.getLogger(SalesforceStreamingSourceUtil.class);
+public class SalesforceStructuredRecordConverter implements SerializableFunction<String, StructuredRecord> {
 
-  static JavaDStream<StructuredRecord> getStructuredRecordJavaDStream(StreamingContext streamingContext,
-                                                                      SalesforceStreamingSourceConfig config,
-                                                                      OAuthInfo oAuthInfo)
-    throws ConnectionException {
-    config.ensurePushTopicExistAndWithCorrectFields(oAuthInfo); // run when macros are substituted
+  private final SalesforceStreamingSourceConfig config;
 
-    Schema schema = streamingContext.getOutputSchema();
-
-    if (schema == null) { // if was not set in configurePipeline due to fields containing macro
-      if (config.getConnection() != null) {
-        schema = SalesforceSchemaUtil.getSchema(config.getConnection().getAuthenticatorCredentials(),
-                                                SObjectDescriptor.fromQuery(config.getQuery()));
-      }
-    }
-    LOG.debug("Schema is {}", schema);
-
-    JavaStreamingContext jssc = streamingContext.getSparkStreamingContext();
-
-    final Schema finalSchema = schema;
-
-    /*SalesforceReceiver receiver = new SalesforceReceiver(config.getConnection().getAuthenticatorCredentials(),
-                                                         config.getPushTopicName(), streamingContext.getArguments());*/
-
-    LOG.info(">>>> State Store Enabled? {}", streamingContext.isStateStoreEnabled());
-    if (streamingContext.isStateStoreEnabled()) {
-
-      ClassTag<String> tag = scala.reflect.ClassTag$.MODULE$.apply(String.class);
-      SalesforceDirectDStream salesforceDirectDStream = new SalesforceDirectDStream(streamingContext, config,
-        config.getConnection().getAuthenticatorCredentials());
-      return new JavaDStream<>(salesforceDirectDStream, tag);
-    }
-    return null;
-
-    /*SalesforceReceiverInputDStream<String> salesforceReceiverInputDStream = new SalesforceReceiverInputDStream<>(
-      jssc.ssc(),
-      ClassTag$.MODULE$.apply(String.class),
-      receiver);
-
-    return new JavaReceiverInputDStream<>(salesforceReceiverInputDStream,
-                                          ClassTag$.MODULE$.apply(String.class))
-      .map(jsonMessage -> getStructuredRecord(jsonMessage, finalSchema))
-      .filter(Objects::nonNull);*/
+  public SalesforceStructuredRecordConverter(SalesforceStreamingSourceConfig config) {
+    this.config = config;
   }
 
-  private static StructuredRecord getStructuredRecord(String jsonMessage, Schema schema) {
-    StructuredRecord.Builder builder = StructuredRecord.builder(schema);
+  @Override
+  public StructuredRecord apply(String jsonMessage) {
+    StructuredRecord.Builder builder = StructuredRecord.builder(config.getSchema());
 
     JSONObject sObjectFields;
     try {
@@ -108,7 +56,7 @@ final class SalesforceStreamingSourceUtil {
       String fieldName = entry.getKey();
       Object value = entry.getValue();
 
-      Schema.Field field = schema.getField(fieldName, true);
+      Schema.Field field = config.getSchema().getField(fieldName, true);
 
       if (field == null) {
         continue; // this field is not in schema
@@ -163,8 +111,5 @@ final class SalesforceStreamingSourceUtil {
 
     return value;
   }
-
-  private SalesforceStreamingSourceUtil() {
-    // no-op
-  }
 }
+
