@@ -37,14 +37,16 @@ public class SalesforceRDD extends RDD {
   private static final Logger LOG = LoggerFactory.getLogger(SalesforceRDD.class);
 
   private final Time batchTime;
+  private final long readDuration;
   private final SalesforceStreamingSourceConfig config;
   private final AuthenticatorCredentials credentials;
 
-  SalesforceRDD(SparkContext sparkContext, Time batchTime, SalesforceStreamingSourceConfig config,
+  SalesforceRDD(SparkContext sparkContext, Time batchTime, long readDuration, SalesforceStreamingSourceConfig config,
                 AuthenticatorCredentials credentials) {
     super(sparkContext, scala.collection.JavaConverters.asScalaBuffer(Collections.emptyList()),
           scala.reflect.ClassTag$.MODULE$.apply(String.class));
     this.batchTime = batchTime;
+    this.readDuration = readDuration;
     this.config = config;
     this.credentials = credentials;
   }
@@ -52,7 +54,7 @@ public class SalesforceRDD extends RDD {
   @Override
   public Iterator<String> compute(Partition split, TaskContext context) {
     LOG.debug("Computing for partition {} .", split.index());
-    return new SalesforceRDDIterator(config, context, batchTime, true, credentials);
+    return new SalesforceRDDIterator(config, context, batchTime, readDuration, credentials);
   }
 
   @Override

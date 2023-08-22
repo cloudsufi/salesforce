@@ -76,7 +76,7 @@ final class SalesforceStreamingSourceUtil {
 
       ClassTag<String> tag = scala.reflect.ClassTag$.MODULE$.apply(String.class);
       SalesforceDirectDStream salesforceDirectDStream = new SalesforceDirectDStream(streamingContext, config,
-        config.getConnection().getAuthenticatorCredentials());
+        streamingContext.getBatchInterval(), config.getConnection().getAuthenticatorCredentials());
       return new JavaDStream<>(salesforceDirectDStream, tag);
     }
     return null;

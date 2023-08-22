@@ -39,15 +39,17 @@ public class SalesforceDirectDStream<T> extends InputDStream implements Streamin
 
   private final AuthenticatorCredentials credentials;
   private final SalesforceStreamingSourceConfig config;
+  private final long readDuration;
   private final io.cdap.cdap.etl.api.streaming.StreamingContext context;
   private final StreamingContext streamingContext;
 
   public SalesforceDirectDStream(io.cdap.cdap.etl.api.streaming.StreamingContext context,
-                                 SalesforceStreamingSourceConfig config,
+                                 SalesforceStreamingSourceConfig config, long readDuration,
                                  AuthenticatorCredentials credentials) {
     super(context.getSparkStreamingContext().ssc(), scala.reflect.ClassTag$.MODULE$.apply(String.class));
     this.streamingContext = context.getSparkStreamingContext().ssc();
     this.config = config;
+    this.readDuration = readDuration;
     this.context = context;
     this.credentials = credentials;
   }
@@ -55,7 +57,8 @@ public class SalesforceDirectDStream<T> extends InputDStream implements Streamin
   @Override
   public Option<RDD<T>> compute(Time validTime) {
     LOG.debug("Computing RDD for time {}.", validTime);
-    SalesforceRDD salesforceRDD = new SalesforceRDD(streamingContext.sparkContext(), validTime, config, credentials);
+    SalesforceRDD salesforceRDD = new SalesforceRDD(streamingContext.sparkContext(), validTime, readDuration, config,
+                                                    credentials);
     RDD<T> mapped = salesforceRDD.map(new SalesforceStructuredRecordConverter(config),
                                       scala.reflect.ClassTag$.MODULE$.apply(String.class));
     return Option.apply(mapped);

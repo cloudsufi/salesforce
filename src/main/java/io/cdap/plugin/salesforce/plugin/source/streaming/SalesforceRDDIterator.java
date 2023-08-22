@@ -70,8 +70,8 @@ public class SalesforceRDDIterator implements Iterator<String> {
   private final long startTime;
   private final SalesforceStreamingSourceConfig config;
   private final TaskContext context;
+  private final long batchDuration;
   private final AuthenticatorCredentials credentials;
-  private final boolean autoAcknowledge;
   private final Queue<String> receivedMessages;
   // store message string not JSONObject, since it's not serializable for later Spark usage
   private final BlockingQueue<String> messagesQueue = new LinkedBlockingQueue<>();
@@ -80,12 +80,12 @@ public class SalesforceRDDIterator implements Iterator<String> {
   private JSONContext.Client jsonContext;
 
   public SalesforceRDDIterator(SalesforceStreamingSourceConfig config, TaskContext context, Time batchTime,
-                               boolean autoAcknowledge, AuthenticatorCredentials credentials) {
+                               long batchDuration, AuthenticatorCredentials credentials) {
     this.config = config;
     this.context = context;
     this.credentials = credentials;
+    this.batchDuration = batchDuration;
     this.startTime = batchTime.milliseconds();
-    this.autoAcknowledge = autoAcknowledge;
     //subscriptionFormatted = ProjectSubscriptionName.format(this.config.getProject(), this.config.getSubscription());
     receivedMessages = new ConcurrentLinkedDeque<>();
   }
@@ -98,12 +98,12 @@ public class SalesforceRDDIterator implements Iterator<String> {
       return true;
     }
 
-    /*long currentTimeMillis = System.currentTimeMillis();
+    long currentTimeMillis = System.currentTimeMillis();
     if (currentTimeMillis >= (startTime + batchDuration)) {
-      LOG.debug("Time exceeded for batch. Total time is {} millis. Total messages returned is {} .",
+      LOG.info("Time exceeded for batch. Total time is {} millis. Total messages returned is {} .",
                 currentTimeMillis - startTime, messageCount);
       return false;
-    }*/
+    }
 
     try {
       List<String> messages = fetch();
