@@ -37,13 +37,17 @@ import org.slf4j.LoggerFactory;
 import scala.collection.Iterator;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -78,6 +82,7 @@ public class SalesforceRDDIterator implements Iterator<String> {
   private long messageCount;
   private BayeuxClient bayeuxClient;
   private JSONContext.Client jsonContext;
+  private ConcurrentMap<String, Integer> replay = new ConcurrentHashMap<>();
 
   public SalesforceRDDIterator(SalesforceStreamingSourceConfig config, TaskContext context, Time batchTime,
                                long batchDuration, AuthenticatorCredentials credentials) {
@@ -86,33 +91,32 @@ public class SalesforceRDDIterator implements Iterator<String> {
     this.credentials = credentials;
     this.batchDuration = batchDuration;
     this.startTime = batchTime.milliseconds();
-    //subscriptionFormatted = ProjectSubscriptionName.format(this.config.getProject(), this.config.getSubscription());
     receivedMessages = new ConcurrentLinkedDeque<>();
+    // Fetch previous messages
+    replay.put("/topic/" + config.getPushTopicName(), -1);
+    fetch();
+
   }
 
   @Override
   public boolean hasNext() {
     LOG.info("In hasNext()");
-    // Complete processing of acknowledged messages before finishing the batch.
+    try {
+      LOG.info("Hostname: {}", InetAddress.getLocalHost().getHostName());
+    } catch (UnknownHostException e) {
+      LOG.error("Unknown Host", e);
+    }
+    // Complete processing of messages before finishing the batch.
     if (!receivedMessages.isEmpty()) {
       return true;
     }
 
-    long currentTimeMillis = System.currentTimeMillis();
-    if (currentTimeMillis >= (startTime + batchDuration)) {
-      LOG.info("Time exceeded for batch. Total time is {} millis. Total messages returned is {} .",
-                currentTimeMillis - startTime, messageCount);
-      return false;
-    }
-
     try {
-      List<String> messages = fetch();
       //If there are no messages to process, continue.
-      if (messages.isEmpty()) {
-        LOG.debug("No more messages. Total messages returned is {} .", messageCount);
+      if (receivedMessages.isEmpty()) {
+        LOG.info("No more messages.");
         return false;
       }
-      receivedMessages.addAll(messages);
       return true;
     } catch (Exception e) {
       throw new RuntimeException("Error reading messages from Salesforce. ", e);
@@ -130,6 +134,7 @@ public class SalesforceRDDIterator implements Iterator<String> {
     String currentMessage = receivedMessages.poll();
     LOG.info("Current Message: {}", currentMessage);
     messageCount += 1;
+    LOG.info("Message Count: {}", messageCount);
     return currentMessage;
   }
 
@@ -167,33 +172,42 @@ public class SalesforceRDDIterator implements Iterator<String> {
     return new BayeuxClient(oAuthInfo.getInstanceURL() + DEFAULT_PUSH_ENDPOINT, transport);
   }
 
-  private List<String> fetch() throws Exception {
-    List<String> receivedMessagesList = new ArrayList<>();
+  private void fetch() {
+    try {
+      if (bayeuxClient == null) {
+        bayeuxClient = getClient(credentials);
+        bayeuxClient.addExtension(new ReplayExtension(replay));
+        context.addTaskCompletionListener(context1 -> {
+          LOG.info("Task Completed.");
+          if (bayeuxClient != null && bayeuxClient.isConnected()) {
+            LOG.info("Unsubscribing Bayeux client...");
+            bayeuxClient.getChannel("/topic/" + config.getPushTopicName()).unsubscribe();
+            LOG.info("Disconnecting Bayeux client...");
+            bayeuxClient.disconnect();
+            bayeuxClient.waitFor(30, BayeuxClient.State.DISCONNECTED);
+          }
+        });
+      }
+      waitForHandshake();
+      LOG.info("Bayeux client IsConnected? : {}", bayeuxClient.isConnected());
+      LOG.info("Bayeux client IsDisonnected? : {}", bayeuxClient.isDisconnected());
+      LOG.info("Bayeux client IsHandshook? : {}", bayeuxClient.isHandshook());
 
-    if (bayeuxClient == null) {
-      LOG.info("Creating Bayeux Client...");
-      bayeuxClient = getClient(credentials);
-      context.addTaskCompletionListener(context1 -> {
-        LOG.info("Task Completed.");
-        if (bayeuxClient != null && bayeuxClient.isConnected()) {
-          LOG.info(">>>> Unsubscribing and disconnecting Bayeux client...");
-          bayeuxClient.getChannel("/topic/" + config.getPushTopicName()).unsubscribe();
-          bayeuxClient.disconnect();
-          bayeuxClient.waitFor(30, BayeuxClient.State.DISCONNECTED);
-        }
+      bayeuxClient.getChannel("/topic/" + config.getPushTopicName()).subscribe((channel, message)
+      -> {
+        LOG.info("Message Received: {}", message.getData().toString());
+        receivedMessages.add(jsonContext.getGenerator()
+                               .generate(message.getDataAsMap()));
       });
+      long expiryTimeMillis = startTime + batchDuration;
+      while (System.currentTimeMillis() <= expiryTimeMillis) {
+        //Add 10 sec delay.
+        Thread.sleep(10000);
+      }
+      LOG.info("Received Messages Count: {}", receivedMessages.size());
+    } catch (Exception exception) {
+      LOG.error("Exception occurred while receiving the messages {}", exception);
     }
-    waitForHandshake();
-    LOG.info(">>>> Bayeux client IsConnected? : {}", bayeuxClient.isConnected());
-    LOG.info(">>>> Bayeux client IsDisonnected? : {}", bayeuxClient.isDisconnected());
-    LOG.info(">>>> Bayeux client IsHandshook? : {}", bayeuxClient.isHandshook());
-    bayeuxClient.getChannel("/topic/" + config.getPushTopicName()).subscribe((channel, message) ->
-      //messagesQueue.add(message.getData().toString()));
-
-      receivedMessagesList.add(message.getData().toString()));
-
-    //String message = messagesQueue.poll(30, TimeUnit.SECONDS);
-    return receivedMessagesList;
   }
 
   private void waitForHandshake() throws IOException {

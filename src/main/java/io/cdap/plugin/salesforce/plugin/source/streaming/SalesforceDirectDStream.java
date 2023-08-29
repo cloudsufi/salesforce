@@ -74,7 +74,7 @@ public class SalesforceDirectDStream<T> extends InputDStream implements Streamin
 
   @Override
   public void onBatchCompleted(io.cdap.cdap.etl.api.streaming.StreamingContext streamingContext) {
-    LOG.debug("Batch completed called.");
+    LOG.info("Batch completed called.");
   }
 
   @Override

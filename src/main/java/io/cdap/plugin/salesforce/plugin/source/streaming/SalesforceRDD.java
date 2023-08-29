@@ -53,14 +53,15 @@ public class SalesforceRDD extends RDD {
 
   @Override
   public Iterator<String> compute(Partition split, TaskContext context) {
-    LOG.debug("Computing for partition {} .", split.index());
+    LOG.info("Computing for partition {} .", split.index());
     return new SalesforceRDDIterator(config, context, batchTime, readDuration, credentials);
   }
 
   @Override
   public Partition[] getPartitions() {
     //int partitionCount = config.getNumberOfReaders();
-    int partitionCount = 10;
+    //int partitionCount = 10;
+    int partitionCount = 1;
     Partition[] partitions = new Partition[partitionCount];
     for (int i = 0; i < partitionCount; i++) {
       final int index = i;

@@ -20,6 +20,8 @@ import io.cdap.cdap.api.data.format.UnexpectedFormatException;
 import io.cdap.cdap.api.data.schema.Schema;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.LocalTime;
@@ -32,7 +34,7 @@ import java.util.concurrent.TimeUnit;
  * PubSubStructuredRecordConverter for converting a PubSubMessage to StructuredRecord.
  */
 public class SalesforceStructuredRecordConverter implements SerializableFunction<String, StructuredRecord> {
-
+  private static final Logger LOG = LoggerFactory.getLogger(SalesforceStructuredRecordConverter.class);
   private final SalesforceStreamingSourceConfig config;
 
   public SalesforceStructuredRecordConverter(SalesforceStreamingSourceConfig config) {
@@ -41,6 +43,7 @@ public class SalesforceStructuredRecordConverter implements SerializableFunction
 
   @Override
   public StructuredRecord apply(String jsonMessage) {
+    LOG.info("In SalesforceStructuredRecordConverter.apply()");
     StructuredRecord.Builder builder = StructuredRecord.builder(config.getSchema());
 
     JSONObject sObjectFields;
