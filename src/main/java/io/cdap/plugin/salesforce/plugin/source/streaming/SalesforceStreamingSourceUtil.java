@@ -16,6 +16,7 @@
 
 package io.cdap.plugin.salesforce.plugin.source.streaming;
 
+import com.google.gson.Gson;
 import com.sforce.ws.ConnectionException;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.format.UnexpectedFormatException;
@@ -34,12 +35,20 @@ import org.slf4j.LoggerFactory;
 import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -47,11 +56,12 @@ import java.util.concurrent.TimeUnit;
  */
 final class SalesforceStreamingSourceUtil {
   private static final Logger LOG = LoggerFactory.getLogger(SalesforceStreamingSourceUtil.class);
+  private static final Gson gson = new Gson();
 
   static JavaDStream<StructuredRecord> getStructuredRecordJavaDStream(StreamingContext streamingContext,
                                                                       SalesforceStreamingSourceConfig config,
                                                                       OAuthInfo oAuthInfo)
-    throws ConnectionException {
+    throws ConnectionException, IOException {
     config.ensurePushTopicExistAndWithCorrectFields(oAuthInfo); // run when macros are substituted
 
     Schema schema = streamingContext.getOutputSchema();
@@ -76,7 +86,8 @@ final class SalesforceStreamingSourceUtil {
 
       ClassTag<String> tag = scala.reflect.ClassTag$.MODULE$.apply(String.class);
       SalesforceDirectDStream salesforceDirectDStream = new SalesforceDirectDStream(streamingContext, config,
-        streamingContext.getBatchInterval(), config.getConnection().getAuthenticatorCredentials());
+        streamingContext.getBatchInterval(), config.getConnection().getAuthenticatorCredentials(),
+                                                                                    getState(streamingContext, config));
       return new JavaDStream<>(salesforceDirectDStream, tag);
     }
     return null;
@@ -90,6 +101,39 @@ final class SalesforceStreamingSourceUtil {
                                           ClassTag$.MODULE$.apply(String.class))
       .map(jsonMessage -> getStructuredRecord(jsonMessage, finalSchema))
       .filter(Objects::nonNull);*/
+  }
+
+  private static ConcurrentMap<String, Integer> getState(StreamingContext streamingContext,
+                                                         SalesforceStreamingSourceConfig config) throws IOException {
+    Integer replayId = -1;
+    ConcurrentMap<String, Integer> replay = new ConcurrentHashMap<>();
+
+    //State store is not enabled, do not read state
+
+    if (!streamingContext.isStateStoreEnabled()) {
+      replay.put("/topic/" + config.getPushTopicName(), replayId);
+      return replay;
+    }
+
+    //If state is not present, use configured repayId or defaults
+    Optional<byte[]> state = streamingContext.getState(config.getPushTopicName());
+    if (!state.isPresent()) {
+      //LOG.info("No saved state found.");
+      replay.put("/topic/" + config.getPushTopicName(), replayId);
+      return replay;
+    }
+
+    byte[] bytes = state.get();
+    try (Reader reader = new InputStreamReader(new ByteArrayInputStream(bytes), StandardCharsets.UTF_8)) {
+      replayId = gson.fromJson(reader, Integer.class);
+      LOG.info("Saved state found. ReplayId = {}. ", replayId);
+      if (replay.putIfAbsent("/topic/" + config.getPushTopicName(), replayId) != null) {
+        throw new IllegalStateException(String.format("Already subscribed to %s",
+                                                      config.getPushTopicName()));
+      }
+      LOG.info("Replay Map: {} ", replay);
+      return replay;
+    }
   }
 
   private static StructuredRecord getStructuredRecord(String jsonMessage, Schema schema) {

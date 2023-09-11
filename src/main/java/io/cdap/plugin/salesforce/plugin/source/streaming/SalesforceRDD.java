@@ -28,6 +28,7 @@ import scala.collection.Iterator;
 import scala.reflect.ClassTag$;
 
 import java.util.Collections;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * SalesforceRDD that returns PubSubMessage for each partition.
@@ -40,21 +41,23 @@ public class SalesforceRDD extends RDD {
   private final long readDuration;
   private final SalesforceStreamingSourceConfig config;
   private final AuthenticatorCredentials credentials;
+  private final ConcurrentMap<String, Integer> dataMap;
 
   SalesforceRDD(SparkContext sparkContext, Time batchTime, long readDuration, SalesforceStreamingSourceConfig config,
-                AuthenticatorCredentials credentials) {
+                AuthenticatorCredentials credentials, ConcurrentMap<String, Integer> dataMap) {
     super(sparkContext, scala.collection.JavaConverters.asScalaBuffer(Collections.emptyList()),
           scala.reflect.ClassTag$.MODULE$.apply(String.class));
     this.batchTime = batchTime;
     this.readDuration = readDuration;
     this.config = config;
     this.credentials = credentials;
+    this.dataMap = dataMap;
   }
 
   @Override
   public Iterator<String> compute(Partition split, TaskContext context) {
     LOG.info("Computing for partition {} .", split.index());
-    return new SalesforceRDDIterator(config, context, batchTime, readDuration, credentials);
+    return new SalesforceRDDIterator(config, context, batchTime, readDuration, credentials, dataMap);
   }
 
   @Override

@@ -51,6 +51,7 @@ import org.apache.tephra.TransactionFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.ws.rs.Path;
@@ -118,7 +119,8 @@ public class SalesforceStreamingSource extends StreamingSource<StructuredRecord>
   }
 
   @Override
-  public JavaDStream<StructuredRecord> getStream(StreamingContext streamingContext) throws ConnectionException {
+  public JavaDStream<StructuredRecord> getStream(StreamingContext streamingContext) throws ConnectionException,
+    IOException {
     FailureCollector collector = streamingContext.getFailureCollector();
     OAuthInfo oAuthInfo = SalesforceConnectionUtil.getOAuthInfo(config.getConnection(), collector);
     if (config.getConnection() != null) {

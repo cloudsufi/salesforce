@@ -76,48 +76,52 @@ public class SalesforceRDDIterator implements Iterator<String> {
   private final TaskContext context;
   private final long batchDuration;
   private final AuthenticatorCredentials credentials;
-  private final Queue<String> receivedMessages;
-  // store message string not JSONObject, since it's not serializable for later Spark usage
-  private final BlockingQueue<String> messagesQueue = new LinkedBlockingQueue<>();
+  private final BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();
   private long messageCount;
   private BayeuxClient bayeuxClient;
   private JSONContext.Client jsonContext;
-  private ConcurrentMap<String, Integer> replay = new ConcurrentHashMap<>();
+  private ConcurrentMap<String, Integer> dataMap;
+  private String currentRecord;
 
   public SalesforceRDDIterator(SalesforceStreamingSourceConfig config, TaskContext context, Time batchTime,
-                               long batchDuration, AuthenticatorCredentials credentials) {
+                               long batchDuration, AuthenticatorCredentials credentials,
+                               ConcurrentMap<String, Integer> dataMap) {
     this.config = config;
     this.context = context;
     this.credentials = credentials;
     this.batchDuration = batchDuration;
     this.startTime = batchTime.milliseconds();
-    receivedMessages = new ConcurrentLinkedDeque<>();
-    // Fetch previous messages
-    replay.put("/topic/" + config.getPushTopicName(), -1);
+    this.dataMap = dataMap;
     fetch();
 
   }
 
   @Override
   public boolean hasNext() {
+
     LOG.info("In hasNext()");
     try {
+
       LOG.info("Hostname: {}", InetAddress.getLocalHost().getHostName());
     } catch (UnknownHostException e) {
       LOG.error("Unknown Host", e);
     }
     // Complete processing of messages before finishing the batch.
     if (!receivedMessages.isEmpty()) {
+      currentRecord = receivedMessages.poll();
       return true;
     }
 
     try {
-      //If there are no messages to process, continue.
-      if (receivedMessages.isEmpty()) {
-        LOG.info("No more messages.");
-        return false;
+      long expiryTimeMillis = startTime + batchDuration;
+      while (System.currentTimeMillis() <= expiryTimeMillis && currentRecord == null) {
+        currentRecord = receivedMessages.poll(1, TimeUnit.SECONDS);
       }
-      return true;
+
+      if (currentRecord != null) {
+        return true;
+      }
+      return false;
     } catch (Exception e) {
       throw new RuntimeException("Error reading messages from Salesforce. ", e);
     }
@@ -125,17 +129,14 @@ public class SalesforceRDDIterator implements Iterator<String> {
 
   @Override
   public String next() {
+    String tempRecord;
+    tempRecord = currentRecord;
     LOG.info("In next()");
-    if (receivedMessages.isEmpty()) {
-      // This should not happen, if hasNext() returns true, then a message should be available in queue.
-      throw new IllegalStateException("Unexpected state. No messages available.");
-    }
-
-    String currentMessage = receivedMessages.poll();
-    LOG.info("Current Message: {}", currentMessage);
     messageCount += 1;
     LOG.info("Message Count: {}", messageCount);
-    return currentMessage;
+    //Set current record to null for continuous polling
+    currentRecord = null;
+    return tempRecord;
   }
 
   private BayeuxClient getClient(AuthenticatorCredentials credentials) throws Exception {
@@ -176,7 +177,7 @@ public class SalesforceRDDIterator implements Iterator<String> {
     try {
       if (bayeuxClient == null) {
         bayeuxClient = getClient(credentials);
-        bayeuxClient.addExtension(new ReplayExtension(replay));
+        bayeuxClient.addExtension(new ReplayExtension(dataMap));
         context.addTaskCompletionListener(context1 -> {
           LOG.info("Task Completed.");
           if (bayeuxClient != null && bayeuxClient.isConnected()) {
@@ -199,12 +200,6 @@ public class SalesforceRDDIterator implements Iterator<String> {
         receivedMessages.add(jsonContext.getGenerator()
                                .generate(message.getDataAsMap()));
       });
-      long expiryTimeMillis = startTime + batchDuration;
-      while (System.currentTimeMillis() <= expiryTimeMillis) {
-        //Add 10 sec delay.
-        Thread.sleep(10000);
-      }
-      LOG.info("Received Messages Count: {}", receivedMessages.size());
     } catch (Exception exception) {
       LOG.error("Exception occurred while receiving the messages {}", exception);
     }

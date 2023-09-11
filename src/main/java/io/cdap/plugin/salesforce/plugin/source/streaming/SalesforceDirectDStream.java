@@ -25,6 +25,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Option;
 
+import java.util.concurrent.ConcurrentMap;
+
 /**
  * SalesforceDirectDStream implementation.
  * A snapshot is taken and saved before each batch and deleted on successful completion.
@@ -42,23 +44,25 @@ public class SalesforceDirectDStream<T> extends InputDStream implements Streamin
   private final long readDuration;
   private final io.cdap.cdap.etl.api.streaming.StreamingContext context;
   private final StreamingContext streamingContext;
+  private final ConcurrentMap<String, Integer> dataMap;
 
   public SalesforceDirectDStream(io.cdap.cdap.etl.api.streaming.StreamingContext context,
                                  SalesforceStreamingSourceConfig config, long readDuration,
-                                 AuthenticatorCredentials credentials) {
+                                 AuthenticatorCredentials credentials, ConcurrentMap<String, Integer> dataMap) {
     super(context.getSparkStreamingContext().ssc(), scala.reflect.ClassTag$.MODULE$.apply(String.class));
     this.streamingContext = context.getSparkStreamingContext().ssc();
     this.config = config;
     this.readDuration = readDuration;
     this.context = context;
     this.credentials = credentials;
+    this.dataMap = dataMap;
   }
 
   @Override
   public Option<RDD<T>> compute(Time validTime) {
     LOG.debug("Computing RDD for time {}.", validTime);
     SalesforceRDD salesforceRDD = new SalesforceRDD(streamingContext.sparkContext(), validTime, readDuration, config,
-                                                    credentials);
+                                                    credentials, dataMap);
     RDD<T> mapped = salesforceRDD.map(new SalesforceStructuredRecordConverter(config),
                                       scala.reflect.ClassTag$.MODULE$.apply(String.class));
     return Option.apply(mapped);
@@ -75,6 +79,7 @@ public class SalesforceDirectDStream<T> extends InputDStream implements Streamin
   @Override
   public void onBatchCompleted(io.cdap.cdap.etl.api.streaming.StreamingContext streamingContext) {
     LOG.info("Batch completed called.");
+    
   }
 
   @Override
