@@ -114,6 +114,10 @@ public class SalesforceRDDIterator implements Iterator<String> {
 
     try {
       long expiryTimeMillis = startTime + batchDuration;
+      // If messages continue to stream in continuously, we need to return false else the message queue will be flooded and the hasNext() method will never finish
+      if (System.currentTimeMillis() > expiryTimeMillis) {
+        return false;
+      }
       while (System.currentTimeMillis() <= expiryTimeMillis && currentRecord == null) {
         currentRecord = receivedMessages.poll(1, TimeUnit.SECONDS);
       }
@@ -179,6 +183,8 @@ public class SalesforceRDDIterator implements Iterator<String> {
         bayeuxClient = getClient(credentials);
         bayeuxClient.addExtension(new ReplayExtension(dataMap));
         context.addTaskCompletionListener(context1 -> {
+          //Called when hasNext() returns false;
+          //Introduce a new variable here to retrieve the last stored message and save its state.
           LOG.info("Task Completed.");
           if (bayeuxClient != null && bayeuxClient.isConnected()) {
             LOG.info("Unsubscribing Bayeux client...");
