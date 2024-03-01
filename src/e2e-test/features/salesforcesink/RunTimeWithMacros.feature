@@ -15,7 +15,6 @@
 @SalesforceSalesCloud
 @SFSink
 @Smoke
-@Regression
 
 Feature: Salesforce Sink - Run time Scenarios with Macro
 

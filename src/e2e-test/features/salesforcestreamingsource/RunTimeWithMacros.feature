@@ -15,7 +15,6 @@
 @SalesforceSalesCloud
 @SFStreamingSource
 @Smoke
-@Regression
 
 Feature: Salesforce Streaming Source - Run time Scenarios (macros)
 

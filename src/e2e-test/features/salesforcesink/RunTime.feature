@@ -15,11 +15,11 @@
 @SalesforceSalesCloud
 @SFSink
 @Smoke
-@Regression
+
 
 Feature: Salesforce Sink - Run time Scenarios
 
-  @SINK-TS-SF-RNTM-01 @BQ_SOURCE_TEST @DELETE_TEST_DATA @Test
+  @SINK-TS-SF-RNTM-01 @BQ_SOURCE_TEST
   Scenario: Verify user should be able to preview, deploy and run pipeline with Salesforce Sink plugin
     When Open Datafusion Project to configure pipeline
     And Select plugin: "BigQuery" from the plugins list as: "Source"
