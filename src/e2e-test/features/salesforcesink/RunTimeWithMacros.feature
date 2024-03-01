@@ -15,6 +15,7 @@
 @SalesforceSalesCloud
 @SFSink
 @Smoke
+@Test2
 
 Feature: Salesforce Sink - Run time Scenarios with Macro
 
@@ -42,6 +43,7 @@ Feature: Salesforce Sink - Run time Scenarios with Macro
     And Click on the Macro button of Property: "loginUrl" and set the value to: "LoginUrl"
     And Click on the Macro button of Property: "sObject" and set the value to: "SObjectName"
     And Select radio button plugin property: "operation" with value: "insert"
+    And Click plugin property: "switch-datatypeValidation"
     Then Validate "Salesforce" plugin properties
     And Close the Plugin Properties page
     And Save the pipeline

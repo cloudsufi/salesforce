@@ -15,7 +15,7 @@
 @SalesforceSalesCloud
 @SFSink
 @Smoke
-
+@Test2
 
 Feature: Salesforce Sink - Run time Scenarios
 
@@ -38,6 +38,7 @@ Feature: Salesforce Sink - Run time Scenarios
     Then Enter input plugin property: "referenceName" with value: "ReferenceName"
     And Select radio button plugin property: "operation" with value: "insert"
     And Enter input plugin property: "sObject" with value: "sobject.Automation_custom_c"
+    And Click plugin property: "switch-datatypeValidation"
     Then Validate "Salesforce" plugin properties
     And Close the Plugin Properties page
     And Save the pipeline
@@ -76,6 +77,7 @@ Feature: Salesforce Sink - Run time Scenarios
     And Select radio button plugin property: "operation" with value: "insert"
     And Enter input plugin property: "sObject" with value: "sobject.Automation_custom_c"
     And Select dropdown plugin property: "errorHandling" with option value: "Skip on error"
+    And Click plugin property: "switch-datatypeValidation"
     Then Validate "Salesforce" plugin properties
     And Close the Plugin Properties page
     And Save the pipeline
@@ -122,6 +124,7 @@ Feature: Salesforce Sink - Run time Scenarios
     Then Enter input plugin property: "referenceName" with value: "ReferenceName"
     And Select radio button plugin property: "operation" with value: "insert"
     And Enter input plugin property: "sObject" with value: "sobject.Automation_custom_c"
+    And Click plugin property: "switch-datatypeValidation"
     Then Validate "Salesforce" plugin properties
     And Close the Plugin Properties page
     And Save the pipeline

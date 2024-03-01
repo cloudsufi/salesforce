@@ -15,7 +15,7 @@
 @SalesforceSalesCloud
 @SFStreamingSource
 @Smoke
-
+@Test2
 Feature: Salesforce Streaming Source - Run time Scenarios (macros)
 
   @STREAMING-TS-SF-RNTM-MACRO-01 @BQ_SINK_TEST @DELETE_PUSH_TOPIC @DELETE_TEST_DATA
