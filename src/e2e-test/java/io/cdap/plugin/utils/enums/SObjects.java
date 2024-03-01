@@ -26,8 +26,8 @@ public enum SObjects {
   OPPORTUNITY("Opportunity"),
   INVALID("Invalid"),
   ACCOUNTZZ("Accountzz"),
-  AUTOMATION_CUSTOM__C("Automation_custom__c"),
-  AUTOMATION_CUSTOM2__C("Automation_custom2__c"),
+  AUTOMATION_CUSTOM__C("Automation_customA__c"),
+  AUTOMATION_CUSTOM2__C("Automation_customB__c"),
   LEADSS("Leadss");
 
   public final String value;
