@@ -119,7 +119,7 @@ public final class SalesforceSplitUtil {
                                           Long initialRetryDuration, Long maxRetryDuration,
                                           Integer maxRetryCount, Boolean retryOnBackendError)
     throws AsyncApiException, IOException, InterruptedException {
-
+    BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
     SObjectDescriptor sObjectDescriptor = SObjectDescriptor.fromQuery(query);
     JobInfo job = SalesforceBulkUtil.createJob(bulkConnection, sObjectDescriptor.getName(), getOperationEnum(operation),
       null, ConcurrencyMode.Parallel, ContentType.CSV);
@@ -139,8 +139,8 @@ public final class SalesforceSplitUtil {
         return waitForBatchChunks(bulkConnection, job.getId(), batchInfo.getId());
       }
       LOG.debug("PKChunking is not enabled");
-      BatchInfo[] batchInfos = bulkConnection.getBatchInfoList(job.getId()).getBatchInfo();
-      LOG.info("Job id {}, status: {}", job.getId(), bulkConnection.getJobStatus(job.getId()).getState());
+      BatchInfo[] batchInfos = bulkConnectionRetryWrapper.getBatchInfoList(job.getId()).getBatchInfo();
+      LOG.info("Job id {}, status: {}", job.getId(), bulkConnectionRetryWrapper.getJobStatus(job.getId()).getState());
       if (batchInfos.length > 0) {
         LOG.info("Batch size {}, state {}", batchInfos.length, batchInfos[0].getState());
       }
@@ -201,14 +201,15 @@ public final class SalesforceSplitUtil {
   private static BatchInfo[] waitForBatchChunks(BulkConnection bulkConnection, String jobId, String initialBatchId)
     throws AsyncApiException {
     BatchInfo initialBatchInfo = null;
+    BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
     for (int i = 0; i < SalesforceSourceConstants.GET_BATCH_RESULTS_TRIES; i++) {
       //check if the job is aborted
-      if (bulkConnection.getJobStatus(jobId).getState() == JobStateEnum.Aborted) {
+      if (bulkConnectionRetryWrapper.getJobStatus(jobId).getState() == JobStateEnum.Aborted) {
         LOG.info(String.format("Job with Id: '%s' is aborted", jobId));
         return new BatchInfo[0];
       }
       try {
-        initialBatchInfo = bulkConnection.getBatchInfo(jobId, initialBatchId);
+        initialBatchInfo = bulkConnectionRetryWrapper.getBatchInfo(jobId, initialBatchId);
       } catch (AsyncApiException e) {
         if (i == SalesforceSourceConstants.GET_BATCH_RESULTS_TRIES - 1) {
           throw e;
@@ -218,7 +219,7 @@ public final class SalesforceSplitUtil {
       }
 
       if (initialBatchInfo.getState() == BatchStateEnum.NotProcessed) {
-        BatchInfo[] result = bulkConnection.getBatchInfoList(jobId).getBatchInfo();
+        BatchInfo[] result = bulkConnectionRetryWrapper.getBatchInfoList(jobId).getBatchInfo();
         return Arrays.stream(result).filter(batchInfo -> batchInfo.getState() != BatchStateEnum.NotProcessed)
           .toArray(BatchInfo[]::new);
       } else if (initialBatchInfo.getState() == BatchStateEnum.Failed) {

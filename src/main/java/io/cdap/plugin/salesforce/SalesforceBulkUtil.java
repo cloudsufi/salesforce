@@ -32,6 +32,7 @@ import com.sforce.soap.partner.SessionHeader_element;
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.ConnectorConfig;
 import com.sforce.ws.SessionRenewer;
+import io.cdap.plugin.salesforce.plugin.source.batch.util.BulkConnectionRetryWrapper;
 import io.cdap.plugin.salesforce.plugin.source.batch.util.SalesforceSourceConstants;
 import org.awaitility.Awaitility;
 import org.slf4j.Logger;
@@ -68,6 +69,7 @@ public final class SalesforceBulkUtil {
   public static JobInfo createJob(BulkConnection bulkConnection, String sObject, OperationEnum operationEnum,
                                   @Nullable String externalIdField,
                                   ConcurrencyMode concurrencyMode, ContentType contentType) throws AsyncApiException {
+    BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
     JobInfo job = new JobInfo();
     job.setObject(sObject);
     job.setOperation(operationEnum);
@@ -77,10 +79,10 @@ public final class SalesforceBulkUtil {
       job.setExternalIdFieldName(externalIdField);
     }
 
-    job = bulkConnection.createJob(job);
+    job = bulkConnectionRetryWrapper.createJob(job);
     Preconditions.checkState(job.getId() != null, "Couldn't get job ID. There was a problem in creating the " +
       "batch job");
-    return bulkConnection.getJobStatus(job.getId());
+    return bulkConnectionRetryWrapper.getJobStatus(job.getId());
   }
 
   /**
@@ -91,10 +93,11 @@ public final class SalesforceBulkUtil {
    * @throws AsyncApiException if there is an issue creating the job
    */
   public static void closeJob(BulkConnection bulkConnection, String jobId) throws AsyncApiException {
+    BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
     JobInfo job = new JobInfo();
     job.setId(jobId);
     job.setState(JobStateEnum.Closed);
-    bulkConnection.updateJob(job);
+    bulkConnectionRetryWrapper.updateJob(job);
   }
 
   /**
@@ -110,13 +113,13 @@ public final class SalesforceBulkUtil {
   public static void checkResults(BulkConnection bulkConnection, JobInfo job,
                                   List<BatchInfo> batchInfoList, boolean ignoreFailures)
     throws AsyncApiException, IOException {
-
+    BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
     for (BatchInfo batchInfo : batchInfoList) {
       /*
       The response is a CSV with the following headers:
       Id,Success,Created,Error
        */
-      CSVReader rdr = new CSVReader(bulkConnection.getBatchResultStream(job.getId(), batchInfo.getId()));
+      CSVReader rdr = new CSVReader(bulkConnectionRetryWrapper.getBatchResultStream(job.getId(), batchInfo.getId()));
       List<String> resultHeader = rdr.nextRecord();
       int successRowId = resultHeader.indexOf("Success");
       int errorRowId = resultHeader.indexOf("Error");
@@ -148,6 +151,7 @@ public final class SalesforceBulkUtil {
    */
   public static void awaitCompletion(BulkConnection bulkConnection, JobInfo job,
                                      List<BatchInfo> batchInfoList, boolean ignoreFailures) {
+    BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
     Set<String> incomplete = batchInfoList
       .stream()
       .map(BatchInfo::getId)
@@ -164,7 +168,7 @@ public final class SalesforceBulkUtil {
       .until(() -> {
         try {
           BatchInfo[] statusList =
-            bulkConnection.getBatchInfoList(job.getId()).getBatchInfo();
+            bulkConnectionRetryWrapper.getBatchInfoList(job.getId()).getBatchInfo();
 
           for (BatchInfo b : statusList) {
             if (b.getState() == BatchStateEnum.Failed) {

@@ -28,13 +28,12 @@ import dev.failsafe.TimeoutExceededException;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.plugin.salesforce.BulkAPIBatchException;
 import io.cdap.plugin.salesforce.SalesforceConnectionUtil;
-import io.cdap.plugin.salesforce.SalesforceConstants;
 import io.cdap.plugin.salesforce.authenticator.Authenticator;
 import io.cdap.plugin.salesforce.authenticator.AuthenticatorCredentials;
+import io.cdap.plugin.salesforce.plugin.source.batch.util.BulkConnectionRetryWrapper;
 import io.cdap.plugin.salesforce.plugin.source.batch.util.SalesforceQueryExecutionException;
 import io.cdap.plugin.salesforce.plugin.source.batch.util.SalesforceSourceConstants;
 import io.cdap.plugin.salesforce.plugin.source.batch.util.SalesforceSplitUtil;
-
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -261,10 +260,11 @@ public class SalesforceBulkRecordReader extends RecordReader<Schema, Map<String,
    */
   private String[] waitForBatchResults(BulkConnection bulkConnection)
     throws AsyncApiException, InterruptedException, SalesforceQueryExecutionException {
+    BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
     BatchInfo info = null;
     for (int i = 0; i < SalesforceSourceConstants.GET_BATCH_RESULTS_TRIES; i++) {
       try {
-        info = bulkConnection.getBatchInfo(jobId, batchId);
+        info = bulkConnectionRetryWrapper.getBatchInfo(jobId, batchId);
       } catch (AsyncApiException e) {
         if (i == SalesforceSourceConstants.GET_BATCH_RESULTS_TRIES - 1) {
           throw e;
