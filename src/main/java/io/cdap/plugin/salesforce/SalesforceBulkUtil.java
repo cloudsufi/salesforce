@@ -56,7 +56,7 @@ public final class SalesforceBulkUtil {
   /**
    * Create a new job using the Bulk API.
    *
-   * @param bulkConnection  BulkConnection object that will connect to salesforce server using bulk APIs.
+   * @param bulkConnectionRetryWrapper bulk connection instance with retry logic
    * @param sObject         sObject name
    * @param operationEnum   Operation that need to be performed on sObject
    * @param externalIdField externalIdField will be used in case of update/upsert operation.
@@ -66,10 +66,9 @@ public final class SalesforceBulkUtil {
    * @throws AsyncApiException if there is an issue creating the job
    */
 
-  public static JobInfo createJob(BulkConnection bulkConnection, String sObject, OperationEnum operationEnum,
-                                  @Nullable String externalIdField,
+  public static JobInfo createJob(BulkConnectionRetryWrapper bulkConnectionRetryWrapper, String sObject,
+                                  OperationEnum operationEnum, @Nullable String externalIdField,
                                   ConcurrencyMode concurrencyMode, ContentType contentType) throws AsyncApiException {
-    BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
     JobInfo job = new JobInfo();
     job.setObject(sObject);
     job.setOperation(operationEnum);
@@ -88,12 +87,12 @@ public final class SalesforceBulkUtil {
   /**
    * Close a job in Salesforce
    *
-   * @param bulkConnection bulk connection instance
+   * @param bulkConnectionRetryWrapper bulk connection instance with retry logic
    * @param jobId          a job id
    * @throws AsyncApiException if there is an issue creating the job
    */
-  public static void closeJob(BulkConnection bulkConnection, String jobId) throws AsyncApiException {
-    BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
+  public static void closeJob(BulkConnectionRetryWrapper bulkConnectionRetryWrapper, String jobId)
+      throws AsyncApiException {
     JobInfo job = new JobInfo();
     job.setId(jobId);
     job.setState(JobStateEnum.Closed);
@@ -103,17 +102,16 @@ public final class SalesforceBulkUtil {
   /**
    * Gets the results of the insert operation for every batch and checks them for errors.
    *
-   * @param bulkConnection bulk connection instance
+   * @param bulkConnectionRetryWrapper bulk connection instance with retry logic.
    * @param job            a Salesforce job
    * @param batchInfoList  a list of batches to check
    * @param ignoreFailures if true, unsuccessful row insertions do not cause an exception
    * @throws AsyncApiException if there is an issue checking for batch results
    * @throws IOException       reading csv from Salesforce failed
    */
-  public static void checkResults(BulkConnection bulkConnection, JobInfo job,
+  public static void checkResults(BulkConnectionRetryWrapper bulkConnectionRetryWrapper, JobInfo job,
                                   List<BatchInfo> batchInfoList, boolean ignoreFailures)
-    throws AsyncApiException, IOException {
-    BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
+      throws AsyncApiException, IOException {
     for (BatchInfo batchInfo : batchInfoList) {
       /*
       The response is a CSV with the following headers:
@@ -130,7 +128,7 @@ public final class SalesforceBulkUtil {
         if (!success) {
           String error = row.get(errorRowId);
           String errorMessage = String.format("Failed to create row with error: '%s'. BatchId='%s'",
-                                              error, batchInfo.getId());
+              error, batchInfo.getId());
           if (ignoreFailures) {
             LOG.error(errorMessage);
           } else {
@@ -144,14 +142,13 @@ public final class SalesforceBulkUtil {
   /**
    * Wait for a job to complete by polling the Bulk API.
    *
-   * @param bulkConnection BulkConnection used to check results.
+   * @param bulkConnectionRetryWrapper bulk connection instance with retry logic.
    * @param job            The job awaiting completion.
    * @param batchInfoList  List of batches for this job.
    * @param ignoreFailures if true, unsuccessful row insertions do not cause an exception
    */
-  public static void awaitCompletion(BulkConnection bulkConnection, JobInfo job,
+  public static void awaitCompletion(BulkConnectionRetryWrapper bulkConnectionRetryWrapper, JobInfo job,
                                      List<BatchInfo> batchInfoList, boolean ignoreFailures) {
-    BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
     Set<String> incomplete = batchInfoList
       .stream()
       .map(BatchInfo::getId)
@@ -191,7 +188,7 @@ public final class SalesforceBulkUtil {
           }
         } catch (AsyncApiException e) {
           if (AsyncExceptionCode.InvalidSessionId == e.getExceptionCode()) {
-            renewSession(bulkConnection, e);
+            renewSession(bulkConnectionRetryWrapper, e);
           } else if (AsyncExceptionCode.ClientInputError == e.getExceptionCode() &&
             failures.get() < SalesforceSourceConstants.MAX_RETRIES_ON_API_FAILURE) {
             // This error can occur when server is not responding with proper error message due to network glitch.
@@ -209,12 +206,13 @@ public final class SalesforceBulkUtil {
   /**
    * Renew session if bulk connection resets
    *
-   * @param connection Bulk Connection
+   * @param bulkConnectionRetryWrapper bulk connection instance with retry logic.
    * @param e          AsyncApiException
    * @throws AsyncApiException
    */
-  private static void renewSession(BulkConnection connection, AsyncApiException e) throws AsyncApiException {
-    ConnectorConfig config = connection.getConfig();
+  private static void renewSession(BulkConnectionRetryWrapper bulkConnectionRetryWrapper, AsyncApiException e)
+      throws AsyncApiException {
+    ConnectorConfig config = bulkConnectionRetryWrapper.getConfig();
     try {
       SessionRenewer.SessionRenewalHeader sessionHeader = config.getSessionRenewer().renewSession(config);
       config.setSessionId(((SessionHeader_element) sessionHeader.headerElement).getSessionId());

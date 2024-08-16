@@ -121,8 +121,8 @@ public final class SalesforceSplitUtil {
     throws AsyncApiException, IOException, InterruptedException {
     BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
     SObjectDescriptor sObjectDescriptor = SObjectDescriptor.fromQuery(query);
-    JobInfo job = SalesforceBulkUtil.createJob(bulkConnection, sObjectDescriptor.getName(), getOperationEnum(operation),
-      null, ConcurrencyMode.Parallel, ContentType.CSV);
+    JobInfo job = SalesforceBulkUtil.createJob(bulkConnectionRetryWrapper, sObjectDescriptor.getName(),
+        getOperationEnum(operation), null, ConcurrencyMode.Parallel, ContentType.CSV);
     final BatchInfo batchInfo;
     try {
       if (retryOnBackendError) {
@@ -237,10 +237,11 @@ public final class SalesforceSplitUtil {
 
   public static void closeJobs(Set<String> jobIds, AuthenticatorCredentials authenticatorCredentials) {
     BulkConnection bulkConnection = SalesforceSplitUtil.getBulkConnection(authenticatorCredentials);
+    BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
     RuntimeException runtimeException = null;
     for (String jobId : jobIds) {
       try {
-        SalesforceBulkUtil.closeJob(bulkConnection, jobId);
+        SalesforceBulkUtil.closeJob(bulkConnectionRetryWrapper, jobId);
       } catch (AsyncApiException e) {
         if (runtimeException == null) {
           runtimeException = new RuntimeException(e);

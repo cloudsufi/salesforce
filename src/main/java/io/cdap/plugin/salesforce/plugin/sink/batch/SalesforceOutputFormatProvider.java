@@ -27,6 +27,7 @@ import io.cdap.plugin.salesforce.SalesforceConstants;
 import io.cdap.plugin.salesforce.authenticator.Authenticator;
 import io.cdap.plugin.salesforce.authenticator.AuthenticatorCredentials;
 import io.cdap.plugin.salesforce.plugin.OAuthInfo;
+import io.cdap.plugin.salesforce.plugin.source.batch.util.BulkConnectionRetryWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,9 +84,9 @@ public class SalesforceOutputFormatProvider implements OutputFormatProvider {
 
     try {
       BulkConnection bulkConnection = new BulkConnection(Authenticator.createConnectorConfig(credentials));
-      JobInfo job = SalesforceBulkUtil.createJob(bulkConnection, config.getSObject(), config.getOperationEnum(),
-                                                 config.getExternalIdField(), config.getConcurrencyModeEnum(),
-                                                 ContentType.ZIP_CSV);
+      BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
+      JobInfo job = SalesforceBulkUtil.createJob(bulkConnectionRetryWrapper, config.getSObject(),
+          config.getOperationEnum(), config.getExternalIdField(), config.getConcurrencyModeEnum(), ContentType.ZIP_CSV);
       configBuilder.put(SalesforceSinkConstants.CONFIG_JOB_ID, job.getId());
       LOG.info("Started Salesforce job with jobId='{}'", job.getId());
     } catch (AsyncApiException e) {
