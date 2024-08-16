@@ -39,7 +39,7 @@ public class BulkConnectionRetryWrapper {
 
   public BulkConnectionRetryWrapper(BulkConnection bulkConnection) {
     this.bulkConnection = bulkConnection;
-    this.retryPolicy = getRetryPolicy(5L, 80L, 5);
+    this.retryPolicy = SalesforceSplitUtil.getRetryPolicy(5L, 80L, 5);
   }
 
   public JobInfo createJob(JobInfo jobInfo) {
@@ -81,20 +81,6 @@ public class BulkConnectionRetryWrapper {
       .onFailure(event -> LOG.info("Failed while getting batch result stream"))
       .get(() -> bulkConnection.getBatchResultStream(jobId, batchId));
     return (InputStream) inputStream;
-  }
-
-  public static RetryPolicy<Object> getRetryPolicy(Long initialRetryDuration, Long maxRetryDuration,
-                                                   Integer maxRetryCount) {
-    // Exponential backoff with initial retry of 5 seconds and max retry of 80 seconds.
-    return RetryPolicy.builder()
-      .handle(AsyncApiException.class)
-      .withBackoff(Duration.ofSeconds(initialRetryDuration), Duration.ofSeconds(maxRetryDuration), 2)
-      .withMaxRetries(maxRetryCount)
-      .onRetry(event -> LOG.info("Retrying Salesforce Bulk Query. Retry count: {}", event
-        .getAttemptCount()))
-      .onSuccess(event -> LOG.debug("Salesforce api call executed successfully."))
-      .onRetriesExceeded(event -> LOG.error("Retry limit reached for Salesforce Bulk Query."))
-      .build();
   }
 
 }
