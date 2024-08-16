@@ -20,6 +20,7 @@ import com.sforce.async.BatchInfo;
 import com.sforce.async.BatchInfoList;
 import com.sforce.async.BulkConnection;
 import com.sforce.async.JobInfo;
+import com.sforce.ws.ConnectorConfig;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import org.slf4j.Logger;
@@ -117,6 +118,10 @@ public class BulkConnectionRetryWrapper {
           }
         });
     return (InputStream) inputStream;
+  }
+
+  public ConnectorConfig getConfig() {
+    return bulkConnection.getConfig();
   }
 
 }
