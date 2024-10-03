@@ -84,12 +84,6 @@ public class TestSetupHooks {
                                    PluginPropertyUtils.pluginProp("InsertBQDataQueryFile"));
   }
 
-  @Before(order = 1, value = "@BQ_FAILURE_TEST")
-  public static void createTempSourceInvalidBQTable() throws IOException, InterruptedException {
-    createSourceBQTableWithQueries(PluginPropertyUtils.pluginProp("BigQueryCreateTableFailureQuery"),
-            PluginPropertyUtils.pluginProp("BigQueryInsertDataFailureQuery"));
-  }
-
   @After(order = 1, value = "@BQ_TEMP_CLEANUP")
   public static void deleteTemperoryCreatedBQTable() throws IOException, InterruptedException {
     String bqTargetTableName = PluginPropertyUtils.pluginProp("bqTargetTable") + "_v1";
