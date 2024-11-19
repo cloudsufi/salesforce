@@ -32,6 +32,7 @@ import com.sforce.soap.partner.SessionHeader_element;
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.ConnectorConfig;
 import com.sforce.ws.SessionRenewer;
+import io.cdap.plugin.salesforce.plugin.source.batch.util.BulkConnectionRetryWrapper;
 import io.cdap.plugin.salesforce.plugin.source.batch.util.SalesforceSourceConstants;
 import org.awaitility.Awaitility;
 import org.slf4j.Logger;
@@ -55,7 +56,7 @@ public final class SalesforceBulkUtil {
   /**
    * Create a new job using the Bulk API.
    *
-   * @param bulkConnection  BulkConnection object that will connect to salesforce server using bulk APIs.
+   * @param bulkConnectionRetryWrapper bulk connection instance with retry logic
    * @param sObject         sObject name
    * @param operationEnum   Operation that need to be performed on sObject
    * @param externalIdField externalIdField will be used in case of update/upsert operation.
@@ -65,8 +66,8 @@ public final class SalesforceBulkUtil {
    * @throws AsyncApiException if there is an issue creating the job
    */
 
-  public static JobInfo createJob(BulkConnection bulkConnection, String sObject, OperationEnum operationEnum,
-                                  @Nullable String externalIdField,
+  public static JobInfo createJob(BulkConnectionRetryWrapper bulkConnectionRetryWrapper, String sObject,
+                                  OperationEnum operationEnum, @Nullable String externalIdField,
                                   ConcurrencyMode concurrencyMode, ContentType contentType) throws AsyncApiException {
     JobInfo job = new JobInfo();
     job.setObject(sObject);
@@ -77,46 +78,46 @@ public final class SalesforceBulkUtil {
       job.setExternalIdFieldName(externalIdField);
     }
 
-    job = bulkConnection.createJob(job);
+    job = bulkConnectionRetryWrapper.createJob(job);
     Preconditions.checkState(job.getId() != null, "Couldn't get job ID. There was a problem in creating the " +
       "batch job");
-    return bulkConnection.getJobStatus(job.getId());
+    return bulkConnectionRetryWrapper.getJobStatus(job.getId());
   }
 
   /**
    * Close a job in Salesforce
    *
-   * @param bulkConnection bulk connection instance
+   * @param bulkConnectionRetryWrapper bulk connection instance with retry logic
    * @param jobId          a job id
    * @throws AsyncApiException if there is an issue creating the job
    */
-  public static void closeJob(BulkConnection bulkConnection, String jobId) throws AsyncApiException {
+  public static void closeJob(BulkConnectionRetryWrapper bulkConnectionRetryWrapper, String jobId)
+      throws AsyncApiException {
     JobInfo job = new JobInfo();
     job.setId(jobId);
     job.setState(JobStateEnum.Closed);
-    bulkConnection.updateJob(job);
+    bulkConnectionRetryWrapper.updateJob(job);
   }
 
   /**
    * Gets the results of the insert operation for every batch and checks them for errors.
    *
-   * @param bulkConnection bulk connection instance
+   * @param bulkConnectionRetryWrapper bulk connection instance with retry logic.
    * @param job            a Salesforce job
    * @param batchInfoList  a list of batches to check
    * @param ignoreFailures if true, unsuccessful row insertions do not cause an exception
    * @throws AsyncApiException if there is an issue checking for batch results
    * @throws IOException       reading csv from Salesforce failed
    */
-  public static void checkResults(BulkConnection bulkConnection, JobInfo job,
+  public static void checkResults(BulkConnectionRetryWrapper bulkConnectionRetryWrapper, JobInfo job,
                                   List<BatchInfo> batchInfoList, boolean ignoreFailures)
-    throws AsyncApiException, IOException {
-
+      throws AsyncApiException, IOException {
     for (BatchInfo batchInfo : batchInfoList) {
       /*
       The response is a CSV with the following headers:
       Id,Success,Created,Error
        */
-      CSVReader rdr = new CSVReader(bulkConnection.getBatchResultStream(job.getId(), batchInfo.getId()));
+      CSVReader rdr = new CSVReader(bulkConnectionRetryWrapper.getBatchResultStream(job.getId(), batchInfo.getId()));
       List<String> resultHeader = rdr.nextRecord();
       int successRowId = resultHeader.indexOf("Success");
       int errorRowId = resultHeader.indexOf("Error");
@@ -127,7 +128,7 @@ public final class SalesforceBulkUtil {
         if (!success) {
           String error = row.get(errorRowId);
           String errorMessage = String.format("Failed to create row with error: '%s'. BatchId='%s'",
-                                              error, batchInfo.getId());
+              error, batchInfo.getId());
           if (ignoreFailures) {
             LOG.error(errorMessage);
           } else {
@@ -141,12 +142,12 @@ public final class SalesforceBulkUtil {
   /**
    * Wait for a job to complete by polling the Bulk API.
    *
-   * @param bulkConnection BulkConnection used to check results.
+   * @param bulkConnectionRetryWrapper bulk connection instance with retry logic.
    * @param job            The job awaiting completion.
    * @param batchInfoList  List of batches for this job.
    * @param ignoreFailures if true, unsuccessful row insertions do not cause an exception
    */
-  public static void awaitCompletion(BulkConnection bulkConnection, JobInfo job,
+  public static void awaitCompletion(BulkConnectionRetryWrapper bulkConnectionRetryWrapper, JobInfo job,
                                      List<BatchInfo> batchInfoList, boolean ignoreFailures) {
     Set<String> incomplete = batchInfoList
       .stream()
@@ -164,7 +165,7 @@ public final class SalesforceBulkUtil {
       .until(() -> {
         try {
           BatchInfo[] statusList =
-            bulkConnection.getBatchInfoList(job.getId()).getBatchInfo();
+            bulkConnectionRetryWrapper.getBatchInfoList(job.getId()).getBatchInfo();
 
           for (BatchInfo b : statusList) {
             if (b.getState() == BatchStateEnum.Failed) {
@@ -187,7 +188,7 @@ public final class SalesforceBulkUtil {
           }
         } catch (AsyncApiException e) {
           if (AsyncExceptionCode.InvalidSessionId == e.getExceptionCode()) {
-            renewSession(bulkConnection, e);
+            renewSession(bulkConnectionRetryWrapper, e);
           } else if (AsyncExceptionCode.ClientInputError == e.getExceptionCode() &&
             failures.get() < SalesforceSourceConstants.MAX_RETRIES_ON_API_FAILURE) {
             // This error can occur when server is not responding with proper error message due to network glitch.
@@ -205,12 +206,13 @@ public final class SalesforceBulkUtil {
   /**
    * Renew session if bulk connection resets
    *
-   * @param connection Bulk Connection
+   * @param bulkConnectionRetryWrapper bulk connection instance with retry logic.
    * @param e          AsyncApiException
    * @throws AsyncApiException
    */
-  private static void renewSession(BulkConnection connection, AsyncApiException e) throws AsyncApiException {
-    ConnectorConfig config = connection.getConfig();
+  private static void renewSession(BulkConnectionRetryWrapper bulkConnectionRetryWrapper, AsyncApiException e)
+      throws AsyncApiException {
+    ConnectorConfig config = bulkConnectionRetryWrapper.getConfig();
     try {
       SessionRenewer.SessionRenewalHeader sessionHeader = config.getSessionRenewer().renewSession(config);
       config.setSessionId(((SessionHeader_element) sessionHeader.headerElement).getSessionId());

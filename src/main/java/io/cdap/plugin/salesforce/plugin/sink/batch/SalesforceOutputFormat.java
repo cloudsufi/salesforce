@@ -22,6 +22,7 @@ import io.cdap.plugin.salesforce.SalesforceBulkUtil;
 import io.cdap.plugin.salesforce.SalesforceConnectionUtil;
 import io.cdap.plugin.salesforce.authenticator.Authenticator;
 import io.cdap.plugin.salesforce.authenticator.AuthenticatorCredentials;
+import io.cdap.plugin.salesforce.plugin.source.batch.util.BulkConnectionRetryWrapper;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.JobContext;
@@ -77,8 +78,9 @@ public class SalesforceOutputFormat extends OutputFormat<NullWritable, Structure
 
         try {
           BulkConnection bulkConnection = new BulkConnection(Authenticator.createConnectorConfig(credentials));
+          BulkConnectionRetryWrapper bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
           String jobId = conf.get(SalesforceSinkConstants.CONFIG_JOB_ID);
-          SalesforceBulkUtil.closeJob(bulkConnection, jobId);
+          SalesforceBulkUtil.closeJob(bulkConnectionRetryWrapper, jobId);
         } catch (AsyncApiException e) {
           throw new RuntimeException(
             String.format("Failed to commit a Salesforce bulk job: %s", e.getMessage()),

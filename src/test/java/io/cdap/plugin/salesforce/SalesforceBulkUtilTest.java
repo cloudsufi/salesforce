@@ -23,6 +23,7 @@ import com.sforce.async.BatchStateEnum;
 import com.sforce.async.BulkConnection;
 import com.sforce.async.ConcurrencyMode;
 import com.sforce.async.JobInfo;
+import io.cdap.plugin.salesforce.plugin.source.batch.util.BulkConnectionRetryWrapper;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -61,7 +62,8 @@ public class SalesforceBulkUtilTest {
     when(batchInfoList.getBatchInfo()).thenReturn(batchInfoDetail);
 
     // Call the awaitCompletion method and verify that it throws a BulkAPIBatchException when the batch fails
-    SalesforceBulkUtil.awaitCompletion(bulkConnection, job, Collections.singletonList(batchInfo), false);
+    BulkConnectionRetryWrapper wrapper = new BulkConnectionRetryWrapper(bulkConnection);
+    SalesforceBulkUtil.awaitCompletion(wrapper, job, Collections.singletonList(batchInfo), false);
   }
 
   @Test(expected = AsyncApiException.class)
@@ -69,7 +71,8 @@ public class SalesforceBulkUtilTest {
     when(bulkConnection.getBatchInfoList(job.getId())).thenThrow(
       new AsyncApiException("Failed to get batch info list ", AsyncExceptionCode.ClientInputError));
     // Call the awaitCompletion method and verify that it throws a AsyncApiException after retrying 10 times.
-    SalesforceBulkUtil.awaitCompletion(bulkConnection, job, Collections.singletonList(batchInfo), true);
+    BulkConnectionRetryWrapper wrapper = new BulkConnectionRetryWrapper(bulkConnection);
+    SalesforceBulkUtil.awaitCompletion(wrapper, job, Collections.singletonList(batchInfo), true);
   }
 
   @Test
@@ -81,6 +84,7 @@ public class SalesforceBulkUtilTest {
     when(batchInfoList.getBatchInfo()).thenReturn(batchInfoDetail);
 
     // Call the awaitCompletion method and verify that it completes successfully
-    SalesforceBulkUtil.awaitCompletion(bulkConnection, job, Collections.singletonList(batchInfo), true);
+    BulkConnectionRetryWrapper wrapper = new BulkConnectionRetryWrapper(bulkConnection);
+    SalesforceBulkUtil.awaitCompletion(wrapper, job, Collections.singletonList(batchInfo), true);
   }
 }

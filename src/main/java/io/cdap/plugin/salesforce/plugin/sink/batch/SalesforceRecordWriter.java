@@ -25,6 +25,7 @@ import io.cdap.plugin.salesforce.SalesforceBulkUtil;
 import io.cdap.plugin.salesforce.SalesforceConnectionUtil;
 import io.cdap.plugin.salesforce.authenticator.Authenticator;
 import io.cdap.plugin.salesforce.authenticator.AuthenticatorCredentials;
+import io.cdap.plugin.salesforce.plugin.source.batch.util.BulkConnectionRetryWrapper;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.RecordWriter;
@@ -50,6 +51,7 @@ public class SalesforceRecordWriter extends RecordWriter<NullWritable, Structure
   private static final Logger LOG = LoggerFactory.getLogger(SalesforceRecordWriter.class);
 
   private BulkConnection bulkConnection;
+  private BulkConnectionRetryWrapper bulkConnectionRetryWrapper;
   private JobInfo jobInfo;
   private ErrorHandling errorHandling;
   private Long maxBytesPerBatch;
@@ -79,6 +81,7 @@ public class SalesforceRecordWriter extends RecordWriter<NullWritable, Structure
 
     AuthenticatorCredentials credentials = SalesforceConnectionUtil.getAuthenticatorCredentials(conf);
     bulkConnection = new BulkConnection(Authenticator.createConnectorConfig(credentials));
+    bulkConnectionRetryWrapper = new BulkConnectionRetryWrapper(bulkConnection);
     jobInfo = bulkConnection.getJobStatus(jobId);
     isFileUploadObject = FileUploadSobject.isFileUploadSobject(jobInfo.getObject());
     if (isFileUploadObject) {
@@ -160,9 +163,10 @@ public class SalesforceRecordWriter extends RecordWriter<NullWritable, Structure
     submitCurrentBatch();
 
     try {
-      SalesforceBulkUtil.awaitCompletion(bulkConnection, jobInfo, batchInfoList,
+      SalesforceBulkUtil.awaitCompletion(bulkConnectionRetryWrapper, jobInfo, batchInfoList,
                                          errorHandling.equals(ErrorHandling.SKIP));
-      SalesforceBulkUtil.checkResults(bulkConnection, jobInfo, batchInfoList, errorHandling.equals(ErrorHandling.SKIP));
+      SalesforceBulkUtil.checkResults(bulkConnectionRetryWrapper, jobInfo, batchInfoList,
+          errorHandling.equals(ErrorHandling.SKIP));
     } catch (AsyncApiException | ConditionTimeoutException e) {
       throw new RuntimeException(String.format("Failed to check the result of a batch for writes: %s",
                                                e.getMessage()), e);
