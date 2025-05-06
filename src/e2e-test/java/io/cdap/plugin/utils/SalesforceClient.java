@@ -178,14 +178,14 @@ public class SalesforceClient {
   public static void deletePushTopic(String pushTopicName) {
     try {
       PartnerConnection partnerConnection = new PartnerConnection(
-        Authenticator.createConnectorConfig(AuthenticatorCredentials.fromParameters(USERNAME, PASSWORD + SECURITYTOKEN,
-                                                                         CLIENTID, CLIENTSECRET, PluginPropertyUtils.
-                                                                           pluginProp("login.url"),
-                                                                         30000, 3600, "")));
+                               Authenticator.createConnectorConfig(AuthenticatorCredentials.fromParameters(USERNAME, PASSWORD + SECURITYTOKEN,
+                                                                                                CLIENTID, CLIENTSECRET, PluginPropertyUtils.
+                                                                                                  pluginProp("login.url"),
+                                                                                  30000, 3600, "")));
 
       QueryResult queryResult = SalesforceStreamingSourceConfig.runQuery(
-        partnerConnection,
-        String.format("SELECT Id FROM PushTopic WHERE Name = '%s'", pushTopicName)
+              partnerConnection,
+              String.format("SELECT Id FROM PushTopic WHERE Name = '%s'", pushTopicName)
       );
 
       SObject sobject = queryResult.getRecords()[0];
@@ -204,7 +204,7 @@ public class SalesforceClient {
     } catch (ConnectionException e) {
       String message = SalesforceConnectionUtil.getSalesforceErrorMessageFromException(e);
       throw new InvalidStageException(
-        String.format("Cannot connect to Salesforce API with credentials specified due to error: %s", message), e);
+              String.format("Cannot connect to Salesforce API with credentials specified due to error: %s", message), e);
     }
   }
 
@@ -269,7 +269,7 @@ public class SalesforceClient {
     return uniqueRecordId;
   }
 
-    public static void updateObject(String id, String objectName) {
+   public static void updateObject(String id, String objectName) {
     getAccessToken();
     HttpClient httpClient = HttpClientBuilder.create().build();
     String baseUri = loginInstanceUrl + REST_ENDPOINT + API_VERSION;

@@ -1,0 +1,8 @@
+insert into `DATASET.TABLE_NAME`  (Id ,Name ) values
+('abc','Test_PB' );
+
+insert into `DATASET.TABLE_NAME`  (Id ,Name ) values
+('345','Test_PB1' );
+
+insert into `DATASET.TABLE_NAME`  (Id ,Name ) values
+('768','Test_PB23' );
