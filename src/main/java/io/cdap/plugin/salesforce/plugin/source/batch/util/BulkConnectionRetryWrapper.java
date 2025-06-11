@@ -16,6 +16,7 @@
 package io.cdap.plugin.salesforce.plugin.source.batch.util;
 
 import com.sforce.async.AsyncApiException;
+import com.sforce.async.AsyncExceptionCode;
 import com.sforce.async.BatchInfo;
 import com.sforce.async.BatchInfoList;
 import com.sforce.async.BulkConnection;
@@ -62,9 +63,13 @@ public class BulkConnectionRetryWrapper {
     Object resultJobInfo = Failsafe.with(retryPolicy).onFailure(event -> LOG.info("Failed while creating job."))
         .get(() -> {
           try {
-            return bulkConnection.createJob(jobInfo);
+            try {
+              throw new IOException("Simulated IOException for testing retry logic");
+            } catch (IOException e) {
+              throw new AsyncApiException("Failed to create job ", AsyncExceptionCode.ClientInputError, e);
+            }
           } catch (AsyncApiException e) {
-            throw new SalesforceQueryExecutionException(e.getMessage());
+            throw new SalesforceQueryExecutionException(e);
           }
         });
     return (JobInfo) resultJobInfo;
