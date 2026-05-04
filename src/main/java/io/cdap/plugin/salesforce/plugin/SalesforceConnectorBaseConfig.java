@@ -89,7 +89,10 @@ public class SalesforceConnectorBaseConfig extends PluginConfig {
   private final String securityToken;
 
   @Name(SalesforceConstants.PROPERTY_LOGIN_URL)
-  @Description("Endpoint to authenticate to")
+  @Description("Endpoint to authenticate to. For password grant type, "
+      + "generic URLs like 'https://login.salesforce.com' can be used. "
+      + "For client credentials, an instance-specific URL is required "
+      + "(e.g. 'https://<instance>.my.salesforce.com/services/oauth2/token').")
   @Macro
   @Nullable
   private final String loginUrl;
@@ -263,8 +266,6 @@ public class SalesforceConnectorBaseConfig extends PluginConfig {
       return;
     }
 
-    GrantType grantType = getAuthenticationGrantType();
-
     // Fields required for all grant types
     if (!containsMacro(SalesforceConstants.PROPERTY_CONSUMER_KEY) && Strings.isNullOrEmpty(consumerKey)) {
       collector.addFailure("Consumer Key is required for authentication.",
@@ -281,6 +282,8 @@ public class SalesforceConnectorBaseConfig extends PluginConfig {
                            "Please provide the Salesforce login URL.")
         .withConfigProperty(SalesforceConstants.PROPERTY_LOGIN_URL);
     }
+
+    GrantType grantType = getAuthenticationGrantType();
 
     // Fields required only for PASSWORD grant type
     if (grantType == GrantType.PASSWORD) {
