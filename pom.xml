@@ -81,7 +81,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <powermock.version>2.0.2</powermock.version>
     <failsafe.version>3.3.2</failsafe.version>
-     <guava.version>32.0.0-jre</guava.version>
+    <guava.version>32.0.0-jre</guava.version>
   </properties>
 
   <repositories>
@@ -137,12 +137,6 @@
       <groupId>io.cdap.plugin</groupId>
       <artifactId>hydrator-common</artifactId>
       <version>${hydrator.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -150,10 +144,6 @@
       <version>${hadoop.version}</version>
       <scope>provided</scope>
       <exclusions>
-        <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
-        </exclusion>
         <exclusion>
           <groupId>commons-logging</groupId>
           <artifactId>commons-logging</artifactId>
@@ -177,6 +167,10 @@
         <exclusion>
           <groupId>org.apache.zookeeper</groupId>
           <artifactId>zookeeper</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
         </exclusion>
         <exclusion>
           <artifactId>jersey-core</artifactId>
@@ -227,10 +221,6 @@
       <scope>provided</scope>
       <exclusions>
         <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
-        </exclusion>
-        <exclusion>
           <groupId>org.slf4j</groupId>
           <artifactId>slf4j-log4j12</artifactId>
         </exclusion>
@@ -257,6 +247,10 @@
         <exclusion>
           <groupId>javax.servlet</groupId>
           <artifactId>servlet-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -406,12 +400,6 @@
       <artifactId>cdap-data-pipeline2_2.11</artifactId>
       <version>${cdap.version}</version>
       <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.avro</groupId>
@@ -551,38 +539,23 @@
     </pluginManagement>
     <plugins>
       <plugin>
-        <groupId>org.antlr</groupId>
-        <artifactId>antlr4-maven-plugin</artifactId>
-        <version>${antlr.version}</version>
-        <configuration>
-          <listener>false</listener>
-          <visitor>true</visitor>
-        </configuration>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.5.0</version>
         <executions>
           <execution>
-            <id>antlr</id>
-            <phase>generate-sources</phase>
+            <id>enforce-upper-bound-deps</id>
             <goals>
-              <goal>antlr4</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.3.0</version>
-        <executions>
-          <execution>
-            <id>add-source</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>add-source</goal>
+              <goal>enforce</goal>
             </goals>
             <configuration>
-              <sources>
-                <source>${project.build.directory}/generated-sources/antlr4</source>
-              </sources>
+              <rules>
+                <requireUpperBoundDeps>
+                  <includes>
+                    <include>com.google.guava:guava</include>
+                  </includes>
+                </requireUpperBoundDeps>
+              </rules>
             </configuration>
           </execution>
         </executions>
@@ -594,7 +567,6 @@
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
-          <useIncrementalCompilation>false</useIncrementalCompilation>
         </configuration>
       </plugin>
       <plugin>
@@ -619,7 +591,6 @@
           </includes>
           <excludes>
             <exclude>**/*TestRun.java</exclude>
-            <exclude>io/cdap/plugin/salesforce/etl/**</exclude>
           </excludes>
         </configuration>
       </plugin>
@@ -746,6 +717,22 @@
       <plugin>
         <groupId>io.cdap</groupId>
         <artifactId>cdap-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.antlr</groupId>
+        <artifactId>antlr4-maven-plugin</artifactId>
+        <version>${antlr.version}</version>
+        <configuration>
+          <listener>false</listener>
+          <visitor>true</visitor>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>antlr4</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
