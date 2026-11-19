@@ -29,7 +29,6 @@ import io.cdap.plugin.salesforce.SalesforceConnectionUtil;
 import io.cdap.plugin.salesforce.SalesforceConstants;
 import io.cdap.plugin.salesforce.authenticator.AuthenticatorCredentials;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -89,30 +88,8 @@ public abstract class BaseSalesforceETLTest extends HydratorTestBase {
   public TestName testName = new TestName();
   protected List<String> createdObjectsIds = new ArrayList<>();
   protected static PartnerConnection partnerConnection;
-  private static boolean initialized;
 
-  /**
-   * Intentionally shadows {@link HydratorTestBase#initialize()} so that missing Salesforce test
-   * credentials skip the test class via {@link Assume} before starting the CDAP test framework.
-   */
   @BeforeClass
-  public static final void initialize() throws Exception {
-    initializeTests();
-    HydratorTestBase.initialize();
-    initialized = true;
-  }
-
-  /**
-   * Intentionally shadows {@link HydratorTestBase#finish()} so teardown only runs when
-   * {@link #initialize()} completed without skipping.
-   */
-  @AfterClass
-  public static final void finish() throws Exception {
-    if (initialized) {
-      HydratorTestBase.finish();
-    }
-  }
-
   public static void initializeTests() throws ConnectionException {
     try {
       Assume.assumeNotNull(CONSUMER_KEY, CONSUMER_SECRET, USERNAME, PASSWORD, LOGIN_URL, CONNECT_TIMEOUT);
